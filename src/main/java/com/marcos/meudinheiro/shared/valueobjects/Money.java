@@ -9,7 +9,6 @@ import java.math.RoundingMode;
 @Embeddable
 public class Money {
 
-    @Column(precision = 19, scale = 2, nullable = false)
     private BigDecimal value;
 
     protected Money() {}

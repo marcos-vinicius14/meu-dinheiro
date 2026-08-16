@@ -2,8 +2,9 @@ package com.marcos.meudinheiro.bankaccount.model;
 
 import com.marcos.meudinheiro.bankaccount.enums.BankAccountType;
 import com.marcos.meudinheiro.shared.valueobjects.Money;
-import com.marcos.meudinheiro.user.model.UserModel;
+import com.marcos.meudinheiro.user.domain.model.UserModel;
 import jakarta.persistence.*;
+import org.hibernate.annotations.Generated;
 
 import java.util.Objects;
 import java.util.UUID;
@@ -12,12 +13,27 @@ import java.util.UUID;
 @Table(name = "tb_bank_accounts")
 public class BankAccountModel {
     @Id
+    @Generated
+    @Column(
+            name = "id",
+            insertable = false,
+            updatable = false
+    )
     private UUID id;
 
     @Column(nullable = false)
     private String name;
 
     @Embedded
+    @AttributeOverride(
+            name = "value",
+            column = @Column(
+                    name = "initial_balance",
+                    nullable = false,
+                    precision = 19,
+                    scale = 2
+            )
+    )
     private Money initialBalance;
 
     @Enumerated(EnumType.STRING)

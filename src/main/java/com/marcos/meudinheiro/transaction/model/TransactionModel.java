@@ -4,10 +4,10 @@ import com.marcos.meudinheiro.bankaccount.model.BankAccountModel;
 import com.marcos.meudinheiro.category.model.CategoryModel;
 import com.marcos.meudinheiro.shared.valueobjects.Money;
 import com.marcos.meudinheiro.transaction.enums.TransactionType;
-import com.marcos.meudinheiro.user.model.UserModel;
+import com.marcos.meudinheiro.user.domain.model.UserModel;
 import jakarta.persistence.*;
+import org.hibernate.annotations.Generated;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -15,12 +15,27 @@ import java.util.UUID;
 @Table(name = "tb_transactions")
 public class TransactionModel {
     @Id
+    @Generated
+    @Column(
+            name = "id",
+            updatable = false,
+            insertable = false
+    )
     private UUID id;
 
     @Column(name = "description", length = 255)
     private String description;
 
     @Embedded
+    @AttributeOverride(
+            name = "value",
+            column = @Column(
+                    name = "value",
+                    nullable = false,
+                    precision = 19,
+                    scale = 2
+            )
+    )
     private Money value;
 
     @Column(name = "type", nullable = false)

@@ -1,5 +1,6 @@
-package com.marcos.meudinheiro.shared.valueobjects;
+package com.marcos.meudinheiro.user.domain.valueobject;
 
+import com.marcos.meudinheiro.shared.notification.ValidationResult;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 
@@ -20,18 +21,23 @@ public class Email {
 
     protected Email() {}
 
-    public Email(String email) {
-        this.value = validate(email);
+    private Email(String email) {
+        this.value = email;
     }
 
-    private static String validate(String value) {
+    public static ValidationResult<Email> create(String value) {
         return Optional.ofNullable(value)
                 .map(String::trim)
                 .map(email -> email.toLowerCase(Locale.ROOT))
                 .filter(email -> !email.isBlank())
                 .filter(email -> email.length() <= MAX_LENGTH)
                 .filter(email -> EMAIL_PATTERN.matcher(email).matches())
-                .orElseThrow(() -> new IllegalArgumentException("Email invalido"));
+                .<ValidationResult<Email>>map(
+                        email -> ValidationResult.valid(new Email(email))
+                )
+                .orElseGet(() ->
+                        ValidationResult.invalid("Email inválido")
+                );
     }
 
     public String value() {

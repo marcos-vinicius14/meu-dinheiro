@@ -1,7 +1,8 @@
-package com.marcos.meudinheiro.user.model;
+package com.marcos.meudinheiro.user.domain.model;
 
 
-import com.marcos.meudinheiro.shared.valueobjects.Email;
+import com.marcos.meudinheiro.user.domain.valueobject.Email;
+import org.hibernate.annotations.Generated;
 import jakarta.persistence.*;
 
 import java.util.UUID;
@@ -10,6 +11,12 @@ import java.util.UUID;
 @Table(name = "tb_users")
 public class UserModel {
     @Id
+    @Generated
+    @Column(
+            name = "id",
+            insertable = false,
+            updatable = false
+    )
     private UUID id;
 
     @Column(name = "username", nullable = false, length = 255)
@@ -21,7 +28,29 @@ public class UserModel {
     @Column(name = "password", nullable = false, length = 255)
     private  String password;
 
-    public UserModel() {}
+    protected UserModel() {}
+
+    private UserModel(
+            String name,
+            Email email,
+            String password
+    ) {
+        this.username = name;
+        this.email = email;
+        this.password = password;
+    }
+
+    public static  UserModel create (
+            String name,
+            Email email,
+            String password
+    ) {
+        return new UserModel(
+                name,
+                email,
+                password
+        );
+    }
 
     public String getUsername() {
         return username;
