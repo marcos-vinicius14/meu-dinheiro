@@ -1,6 +1,6 @@
-package com.marcos.meudinheiro.bankaccount.model;
+package com.marcos.meudinheiro.bankaccount.domain.model;
 
-import com.marcos.meudinheiro.bankaccount.enums.BankAccountType;
+import com.marcos.meudinheiro.bankaccount.domain.enums.BankAccountType;
 import com.marcos.meudinheiro.shared.valueobjects.Money;
 import com.marcos.meudinheiro.user.domain.model.UserModel;
 import jakarta.persistence.*;

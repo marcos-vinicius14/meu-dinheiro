@@ -1,4 +1,4 @@
-package com.marcos.meudinheiro.bankaccount.enums;
+package com.marcos.meudinheiro.bankaccount.domain.enums;
 
 public enum BankAccountType {
     CHECKING,

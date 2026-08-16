@@ -1,9 +1,9 @@
-package com.marcos.meudinheiro.transaction.model;
+package com.marcos.meudinheiro.transaction.domain.model;
 
-import com.marcos.meudinheiro.bankaccount.model.BankAccountModel;
-import com.marcos.meudinheiro.category.model.CategoryModel;
+import com.marcos.meudinheiro.bankaccount.domain.model.BankAccountModel;
+import com.marcos.meudinheiro.category.domain.model.CategoryModel;
 import com.marcos.meudinheiro.shared.valueobjects.Money;
-import com.marcos.meudinheiro.transaction.enums.TransactionType;
+import com.marcos.meudinheiro.transaction.domain.enums.TransactionType;
 import com.marcos.meudinheiro.user.domain.model.UserModel;
 import jakarta.persistence.*;
 import org.hibernate.annotations.Generated;

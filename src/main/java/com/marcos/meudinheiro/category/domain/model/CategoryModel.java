@@ -1,4 +1,4 @@
-package com.marcos.meudinheiro.category.model;
+package com.marcos.meudinheiro.category.domain.model;
 
 import com.marcos.meudinheiro.user.domain.model.UserModel;
 import jakarta.persistence.*;
