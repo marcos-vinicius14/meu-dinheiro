@@ -1,7 +1,8 @@
-package com.marcos.meudinheiro.category.model;
+package com.marcos.meudinheiro.category.domain.model;
 
-import com.marcos.meudinheiro.user.model.UserModel;
+import com.marcos.meudinheiro.user.domain.model.UserModel;
 import jakarta.persistence.*;
+import org.hibernate.annotations.Generated;
 
 import java.util.UUID;
 
@@ -9,6 +10,12 @@ import java.util.UUID;
 @Table(name = "tb_categories")
 public class CategoryModel {
     @Id
+    @Generated
+    @Column(
+            name = "id",
+            insertable = false,
+            updatable = false
+    )
     private UUID id;
 
     @Column(nullable = false, length = 255)

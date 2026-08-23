@@ -2,6 +2,7 @@ spring:
   application:
     name: meu-dinheiro-api
 
+
   datasource:
     url: ${DATABASE_URL}
     username: ${POSTGRES_USER}
@@ -25,6 +26,10 @@ spring:
       locations: classpath:db/migration
       baseline-on-migrate: false
       validate-on-migrate: true
+  web:
+    error:
+      include-stacktrace: never
+      include-message: never
 
 server:
   port: 8080
