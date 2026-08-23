@@ -1,0 +1,41 @@
+package com.marcos.meudinheiro.identity.application.usecase;
+
+import com.marcos.meudinheiro.identity.domain.model.AuthenticadedUser;
+import com.marcos.meudinheiro.user.application.contract.FindUserIdentityUseCase;
+import org.jspecify.annotations.Nullable;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+
+import java.util.Collection;
+import java.util.List;
+
+public class SecurityUserDetailsCase implements UserDetailsService {
+
+    private static final List<GrantedAuthority> DEFAULT_AUTHORITIES = List.of(
+            new SimpleGrantedAuthority("ROLE_USER")
+    );
+
+    private final FindUserIdentityUseCase findUserIdentityUseCase;
+
+    public SecurityUserDetailsCase(FindUserIdentityUseCase findUserIdentityUseCase) {
+        this.findUserIdentityUseCase = findUserIdentityUseCase;
+    }
+
+    @Override
+    public UserDetails loadUserByUsername(String email) {
+        var identity = findUserIdentityUseCase.execute(email)
+                .orElseThrow(() ->
+                        new UsernameNotFoundException("Invalid credentials")
+                );
+
+        return new AuthenticadedUser(
+                identity.id(),
+                identity.email(),
+                identity.passwordHash(),
+                DEFAULT_AUTHORITIES
+        );
+    }
+}

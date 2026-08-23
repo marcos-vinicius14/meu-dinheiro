@@ -1,9 +1,9 @@
-package com.marcos.meudinheiro.user.infraesctructure.controller;
+package com.marcos.meudinheiro.user.infraesctructure.web.controller;
 
 import com.marcos.meudinheiro.shared.notification.OperationResult;
-import com.marcos.meudinheiro.user.infraesctructure.controller.dto.ApiResponse;
-import com.marcos.meudinheiro.user.infraesctructure.controller.dto.request.CreateUserRequest;
-import com.marcos.meudinheiro.user.application.usecase.UserCase;
+import com.marcos.meudinheiro.user.infraesctructure.web.dto.ApiResponse;
+import com.marcos.meudinheiro.user.infraesctructure.web.dto.CreateUserRequest;
+import com.marcos.meudinheiro.user.application.usecase.CreateUserCase;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,9 +15,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/users")
 public class UserController {
 
-    private final UserCase userCase;
+    private final CreateUserCase userCase;
 
-    public UserController(UserCase userCase) {
+    public UserController(CreateUserCase userCase) {
         this.userCase = userCase;
     }
 
