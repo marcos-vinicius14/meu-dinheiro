@@ -2,7 +2,6 @@ package com.marcos.meudinheiro.identity.infraestructure.security;
 
 import com.marcos.meudinheiro.identity.domain.model.AuthenticadedUser;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.token.Token;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
@@ -13,7 +12,7 @@ import java.time.Duration;
 
 @Service
 public final class JwtTokenService {
-    private static final String ISSUER = "meu-dinheiro-api";
+    public static final String ISSUER = "meudinheiro";
     private static final Duration ACCESS_TOKEN_TTL = Duration.ofMinutes(10);
 
     private final JwtEncoder jwtEncoder;

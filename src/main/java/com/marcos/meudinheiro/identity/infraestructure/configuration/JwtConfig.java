@@ -11,19 +11,22 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
 import org.springframework.security.converter.RsaKeyConverters;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 
+import com.marcos.meudinheiro.identity.infraestructure.security.JwtTokenService;
+import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 
 @Configuration
 public class JwtConfig {
 
-    private static final String ISSUER = "meudinheiro";
-
-
     @Bean
     RSAPublicKey rsaPublicKey(
-        @Value("${security.jwt.public.key}")
+        @Value("${security.jwt.public-key}")
         Resource resource
     ) throws IOException {
 
@@ -35,8 +38,8 @@ public class JwtConfig {
     }
 
     @Bean
-    RSAPrivateKey jwPrivateKey(
-        @Value("${securitty.jwt.private-key")
+    RSAPrivateKey jwtPrivateKey(
+        @Value("${security.jwt.private-key}")
         Resource resource
     ) throws IOException {
         
@@ -47,7 +50,6 @@ public class JwtConfig {
         }
     }
 
-
     @Bean
     JwtDecoder jwtDecoder(
         RSAPublicKey publicKey
@@ -57,17 +59,27 @@ public class JwtConfig {
             .build();
 
         decoder.setJwtValidator(
-            JwtValidators.createDefaultWithIssuer(ISSUER)
+            JwtValidators.createDefaultWithIssuer(JwtTokenService.ISSUER)
         );
 
         return decoder;
     }
 
     @Bean
+    JwtEncoder jwtEncoder(
+        RSAPublicKey publicKey,
+        RSAPrivateKey privateKey
+    ) {
+        var jwk = new RSAKey.Builder(publicKey)
+                .privateKey(privateKey)
+                .build();
+
+        return new NimbusJwtEncoder(new ImmutableJWKSet<>(new JWKSet(jwk)));
+    }
+
+    @Bean
     Clock clock() {
         return Clock.systemUTC();
     }
-
-
 
 }

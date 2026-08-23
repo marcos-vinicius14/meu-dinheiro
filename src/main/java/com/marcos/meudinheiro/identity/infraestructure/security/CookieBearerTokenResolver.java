@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 public class CookieBearerTokenResolver  implements BearerTokenResolver {
 
 
-    private static final String ACCESS_TOKEN_COOKIE = "access_token";
+    public static final String ACCESS_TOKEN_COOKIE = "access_token";
 
     @Override
     public String resolve(HttpServletRequest request) {

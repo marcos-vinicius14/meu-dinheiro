@@ -6,7 +6,9 @@ import com.marcos.meudinheiro.identity.application.contract.dto.AuthenticationOu
 import com.marcos.meudinheiro.identity.infraestructure.security.JwtTokenService;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.stereotype.Service;
 
+@Service
 public class AuthenticatedUserCaseImpl implements AuthenticateUserUseCase {
     private final AuthenticationManager authenticationManager;
     private final JwtTokenService jwtTokenService;

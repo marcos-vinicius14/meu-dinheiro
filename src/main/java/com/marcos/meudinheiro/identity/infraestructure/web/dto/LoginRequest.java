@@ -10,7 +10,7 @@ public record LoginRequest(
         String email,
 
         @NotBlank
-        @Size(min = 8, max = 32, message = "Quantidade de caracteres invalida")
+        @Size(min = 8, max = 255, message = "Quantidade de caracteres invalida")
         String password
 ) {
 }

@@ -2,7 +2,7 @@ package com.marcos.meudinheiro.identity.infraestructure.web.controller;
 
 import com.marcos.meudinheiro.identity.application.contract.AuthenticateUserUseCase;
 import com.marcos.meudinheiro.identity.application.contract.dto.AuthenticationInput;
-import com.marcos.meudinheiro.identity.application.contract.dto.AuthenticationOutput;
+import com.marcos.meudinheiro.identity.infraestructure.security.CookieBearerTokenResolver;
 import com.marcos.meudinheiro.identity.infraestructure.web.dto.LoginRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -38,7 +38,7 @@ final class AuthenticationController {
         var authentication = useCase.execute(input);
 
         var cookie = ResponseCookie.from(
-                "access-token",
+                CookieBearerTokenResolver.ACCESS_TOKEN_COOKIE,
                 authentication.acessToken()
         )
                 .httpOnly(true)
