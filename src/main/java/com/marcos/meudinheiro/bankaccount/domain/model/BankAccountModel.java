@@ -44,38 +44,63 @@ public class BankAccountModel {
     @JoinColumn(name = "user_id")
     private UserModel user;
 
-    public BankAccountModel() {}
+    protected BankAccountModel() {}
+
+    private BankAccountModel(
+            String name,
+            BankAccountType bankAccountType,
+            Money initialBalance,
+            UserModel user
+    ) {
+        this.name = name;
+        this.bankAccountType = bankAccountType;
+        this.initialBalance = initialBalance;
+        this.user = user;
+    }
+
+    public static BankAccountModel create(
+            String name,
+            BankAccountType bankAccountType,
+            Money initialBalance,
+            UserModel user
+    ) {
+        return new BankAccountModel(
+                name,
+                bankAccountType,
+                initialBalance,
+                user
+        );
+    }
+
+    public void updateName(String name) {
+        this.name = name;
+    }
+
+    public void updateInitialBalance(Money initialBalance) {
+        this.initialBalance = Objects.requireNonNull(initialBalance);
+    }
+
+    public boolean belongsTo(UUID userId) {
+        return user != null && user.getId().equals(userId);
+    }
+
+    public UUID getId() {
+        return id;
+    }
 
     public String getName() {
         return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
     }
 
     public Money getInitialBalance() {
         return initialBalance;
     }
 
-    public void setInitialBalance(Money initialBalance) {
-
-        this.initialBalance = Objects.requireNonNull(initialBalance);
-    }
-
     public BankAccountType getBankAccountType() {
         return bankAccountType;
     }
 
-    public void setBankAccountType(BankAccountType bankAccountType) {
-        this.bankAccountType = bankAccountType;
-    }
-
     public UserModel getUser() {
         return user;
-    }
-
-    public void setUser(UserModel user) {
-        this.user = user;
     }
 }

@@ -34,4 +34,4 @@ jobs:
         run: ./mvnw test
 
       - name: Integration tests
-        run: ./mvnw test-compile failsafe:integration-test
+        run: ./mvnw test-compile failsafe:integration-test failsafe:verify

@@ -30,6 +30,31 @@ Exceção só para caso excepcional (infra caída, contrato de framework, bug). 
 - Controller decide status HTTP; use case não conhece HTTP.
 - Mensagens de erro em português; em segurança, mensagens opacas (não revele se token existe/expirou/foi revogado).
 
+## Optional / Maybe Type para ausência de valor
+
+Evite atribuir `null` a variáveis para representar "não encontrado". Prefira encadear `Optional` e tratar a ausência de valor no final do pipeline.
+
+- Use `findById(...)` (ou métodos de repository que já retornam `Optional`) e encadene `.filter(...)`, `.map(...)` e `.orElseGet(...)`.
+- Não use `.orElse(null)` seguido de `if (obj == null)` — isso recria o mesmo problema que o `Optional` resolve.
+- Para lógicas de sucesso maiores (ex.: validação de input antes de salvar), extraia um método privado e chame dentro do `.map(...)`.
+
+Exemplo:
+
+```java
+return repository.findById(accountId)
+        .filter(account -> account.belongsTo(userId))
+        .map(BankAccountMapper::toOutput)
+        .map(OperationResult::success)
+        .orElseGet(() -> OperationResult.failure("Conta não encontrada"));
+```
+
+```java
+return repository.findById(accountId)
+        .filter(account -> account.belongsTo(userId))
+        .map(account -> updateAccount(account, input))
+        .orElseGet(() -> OperationResult.failure("Conta não encontrada"));
+```
+
 ## Armadilhas verificadas (custaram debugging)
 
 - **`final class` + `@Transactional` não funciona**: CGLIB não cria proxy → `AopConfigException` no boot. Use cases transacionais são `public class` não-final.
