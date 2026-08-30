@@ -1,4 +1,4 @@
-package com.marcos.meudinheiro.user.infraesctructure.controller.dto.request;
+package com.marcos.meudinheiro.user.infraesctructure.web.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

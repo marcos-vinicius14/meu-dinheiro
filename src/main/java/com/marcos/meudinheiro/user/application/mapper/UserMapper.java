@@ -2,7 +2,7 @@ package com.marcos.meudinheiro.user.application.mapper;
 
 import com.marcos.meudinheiro.shared.notification.Notification;
 import com.marcos.meudinheiro.user.domain.valueobject.Email;
-import com.marcos.meudinheiro.user.infraesctructure.controller.dto.request.CreateUserRequest;
+import com.marcos.meudinheiro.user.infraesctructure.web.dto.CreateUserRequest;
 import com.marcos.meudinheiro.user.domain.model.UserModel;
 
 public class UserMapper {

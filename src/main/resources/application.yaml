@@ -31,5 +31,11 @@ spring:
       include-stacktrace: never
       include-message: never
 
+
+security:
+  jwt:
+    public-key: classpath:keys/public.pem ## TODO: Ajustar para secret em PROD
+    private-key: classpath:keys/private.pem
+
 server:
   port: 8080

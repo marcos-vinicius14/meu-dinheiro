@@ -6,6 +6,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -60,6 +61,15 @@ public class GlobalExceptionHandler {
                 .badRequest()
                 .body(new ErrorResponse(
                         List.of("Parâmetro obrigatório: " + exception.getParameterName())
+                ));
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ErrorResponse> handleAuthentication() {
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(new ErrorResponse(
+                        List.of("Credenciais inválidas")
                 ));
     }
 

@@ -1,4 +1,4 @@
-package com.marcos.meudinheiro.user.infraesctructure.controller.dto;
+package com.marcos.meudinheiro.user.infraesctructure.web.dto;
 
 import java.util.List;
 

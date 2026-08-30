@@ -64,6 +64,10 @@ public class UserModel {
         return email;
     }
 
+    public UUID getId() {
+        return id;
+    }
+
     public void setEmail(Email email) {
         this.email = email;
     }
