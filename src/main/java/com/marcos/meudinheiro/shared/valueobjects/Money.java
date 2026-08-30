@@ -16,4 +16,8 @@ public class Money {
     public Money(BigDecimal value) {
         this.value = value.setScale(2, RoundingMode.HALF_EVEN);
     }
+
+    public BigDecimal getValue() {
+        return value;
+    }
 }

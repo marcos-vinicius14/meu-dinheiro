@@ -29,12 +29,12 @@ public abstract class AuthenticationTestSupport extends AbstractIntegrationTest 
     @Autowired
     protected JdbcTemplate jdbcTemplate;
 
-    protected record Session(String accessToken, String refreshToken) {
-        Cookie accessTokenCookie() {
+    public record Session(String accessToken, String refreshToken) {
+        public Cookie accessTokenCookie() {
             return new Cookie(ACCESS_TOKEN_COOKIE, accessToken);
         }
 
-        Cookie refreshTokenCookie() {
+        public Cookie refreshTokenCookie() {
             return new Cookie(REFRESH_TOKEN_COOKIE, refreshToken);
         }
     }
