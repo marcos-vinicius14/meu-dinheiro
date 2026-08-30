@@ -9,7 +9,7 @@ import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import com.marcos.meudinheiro.identity.application.usecase.SecurityUserDetailsCase;
+import com.marcos.meudinheiro.identity.infraestructure.security.authentication.SecurityUserDetailsCase;
 
 @Configuration
 public class AuthenticationConfig {

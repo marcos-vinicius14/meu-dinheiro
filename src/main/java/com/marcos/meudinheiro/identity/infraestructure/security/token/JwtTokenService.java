@@ -1,11 +1,11 @@
-package com.marcos.meudinheiro.identity.infraestructure.security;
+package com.marcos.meudinheiro.identity.infraestructure.security.token;
 
-import com.marcos.meudinheiro.identity.domain.model.AuthenticadedUser;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.stereotype.Service;
+
+import com.marcos.meudinheiro.identity.infraestructure.security.authentication.JwtSubject;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -23,16 +23,15 @@ public final class JwtTokenService {
         this.clock = clock;
     }
 
-    public Token generate(Authentication authentication) {
-        var principal = getPrincipal(authentication);
+    public Token generate(JwtSubject subject) {
 
         var issuedAt = clock.instant();
         var expiresAt = issuedAt.plus(ACCESS_TOKEN_TTL);
 
         var claims = JwtClaimsSet.builder()
                 .issuer(ISSUER)
-                .subject(principal.id().toString())
-                .claim("email", principal.email())
+                .subject(subject.userId().toString())
+                .claim("email", subject.email())
                 .issuedAt(issuedAt)
                 .expiresAt(expiresAt)
                 .build();
@@ -47,20 +46,7 @@ public final class JwtTokenService {
         );
     }
 
-    private AuthenticadedUser getPrincipal(
-            Authentication authentication
-    ) {
-        if (!(authentication.getPrincipal()
-                instanceof AuthenticadedUser principal)) {
-
-            throw new IllegalStateException(
-                    "Nao foi possivel encontrar o usuario autenticado"
-            );
-        }
-
-        return principal;
-    }
-
+   
     public record Token(
             String value,
             long expiresIn

@@ -1,6 +1,5 @@
-package com.marcos.meudinheiro.identity.application.usecase;
+package com.marcos.meudinheiro.identity.infraestructure.security.authentication;
 
-import com.marcos.meudinheiro.identity.domain.model.AuthenticadedUser;
 import com.marcos.meudinheiro.user.application.contract.FindUserIdentityUseCase;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -26,7 +25,7 @@ public class SecurityUserDetailsCase implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) {
-        var identity = findUserIdentityUseCase.execute(email)
+        var identity = findUserIdentityUseCase.findByEmail(email)
                 .orElseThrow(() ->
                         new UsernameNotFoundException("Invalid credentials")
                 );

@@ -20,7 +20,7 @@ public final class CreateUserCase {
         this.passwordEncoder = passwordEncoder;
     }
 
-    public OperationResult execute(CreateUserRequest request) {
+    public OperationResult<Void> execute(CreateUserRequest request) {
         Notification notification = new Notification();
 
         UserModel user = UserMapper.toUserModel(request, notification);

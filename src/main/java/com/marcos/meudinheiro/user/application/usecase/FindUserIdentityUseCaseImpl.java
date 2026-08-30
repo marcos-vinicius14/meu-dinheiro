@@ -6,18 +6,29 @@ import com.marcos.meudinheiro.user.infraesctructure.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
-public final class FindUserIdentityCase implements FindUserIdentityUseCase {
+public final class FindUserIdentityUseCaseImpl implements FindUserIdentityUseCase {
     private final UserRepository userRepository;
 
-    public FindUserIdentityCase(UserRepository userRepository) {
+    public FindUserIdentityUseCaseImpl(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
 
     @Override
-    public Optional<UserIdentityOutput> execute(String email) {
+    public Optional<UserIdentityOutput> findByEmail(String email) {
         return userRepository.findByEmail(email)
+                .map(user -> new UserIdentityOutput(
+                        user.getId(),
+                        user.getEmail().value(),
+                        user.getPassword()
+                ));
+    }
+
+    @Override
+    public Optional<UserIdentityOutput> findById(UUID id) {
+        return userRepository.findById(id)
                 .map(user -> new UserIdentityOutput(
                         user.getId(),
                         user.getEmail().value(),

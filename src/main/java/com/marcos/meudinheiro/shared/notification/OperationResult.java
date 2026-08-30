@@ -2,16 +2,25 @@ package com.marcos.meudinheiro.shared.notification;
 
 import java.util.List;
 
-public record OperationResult(
+public record OperationResult<T>(
+        T value,
         List<String> errors
 ) {
 
-    public static OperationResult success() {
-        return new OperationResult(List.of());
+    public static OperationResult<Void> success() {
+        return new OperationResult<>(null, List.of());
     }
 
-    public static OperationResult failure(List<String> errors) {
-        return new OperationResult(List.copyOf(errors));
+    public static <T> OperationResult<T> success(T value) {
+        return new OperationResult<>(value, List.of());
+    }
+
+    public static <T> OperationResult<T> failure(String error) {
+        return failure(List.of(error));
+    }
+
+    public static <T> OperationResult<T> failure(List<String> errors) {
+        return new OperationResult<>(null, List.copyOf(errors));
     }
 
     public boolean isSuccess() {

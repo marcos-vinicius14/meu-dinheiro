@@ -1,4 +1,4 @@
-package com.marcos.meudinheiro.identity.domain.model;
+package com.marcos.meudinheiro.identity.infraestructure.security.authentication;
 
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;

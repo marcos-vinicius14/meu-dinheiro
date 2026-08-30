@@ -26,7 +26,7 @@ public class UserController {
             @Valid @RequestBody CreateUserRequest request
     ) {
 
-        OperationResult result = userCase.execute(request);
+        OperationResult<Void> result = userCase.execute(request);
 
         if (result.isFailure()) {
             return ResponseEntity
