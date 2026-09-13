@@ -1,16 +1,16 @@
-package com.marcos.meudinheiro.bankaccount.infraestructure.web.controller;
+package com.marcos.meudinheiro.category.infraestructure.web.controller;
 
-import com.marcos.meudinheiro.bankaccount.application.contract.CreateBankAccountUseCase;
-import com.marcos.meudinheiro.bankaccount.application.contract.DeleteBankAccountUseCase;
-import com.marcos.meudinheiro.bankaccount.application.contract.FindBankAccountUseCase;
-import com.marcos.meudinheiro.bankaccount.application.contract.ListBankAccountsUseCase;
-import com.marcos.meudinheiro.bankaccount.application.contract.UpdateBankAccountUseCase;
-import com.marcos.meudinheiro.bankaccount.application.contract.constant.BankAccountMessages;
-import com.marcos.meudinheiro.bankaccount.application.contract.dto.CreateBankAccountInput;
-import com.marcos.meudinheiro.bankaccount.application.contract.dto.UpdateBankAccountInput;
-import com.marcos.meudinheiro.bankaccount.infraestructure.web.dto.BankAccountResponse;
-import com.marcos.meudinheiro.bankaccount.infraestructure.web.dto.CreateBankAccountRequest;
-import com.marcos.meudinheiro.bankaccount.infraestructure.web.dto.UpdateBankAccountRequest;
+import com.marcos.meudinheiro.category.application.contract.CreateCategoryUseCase;
+import com.marcos.meudinheiro.category.application.contract.DeleteCategoryUseCase;
+import com.marcos.meudinheiro.category.application.contract.FindCategoryUseCase;
+import com.marcos.meudinheiro.category.application.contract.ListCategoriesUseCase;
+import com.marcos.meudinheiro.category.application.contract.UpdateCategoryUseCase;
+import com.marcos.meudinheiro.category.application.contract.constant.CategoryMessages;
+import com.marcos.meudinheiro.category.application.contract.dto.CreateCategoryInput;
+import com.marcos.meudinheiro.category.application.contract.dto.UpdateCategoryInput;
+import com.marcos.meudinheiro.category.infraestructure.web.dto.CategoryResponse;
+import com.marcos.meudinheiro.category.infraestructure.web.dto.CreateCategoryRequest;
+import com.marcos.meudinheiro.category.infraestructure.web.dto.UpdateCategoryRequest;
 import com.marcos.meudinheiro.identity.application.contract.CurrentIdentity;
 import com.marcos.meudinheiro.shared.infraestructure.web.response.ErrorResponse;
 import jakarta.validation.Valid;
@@ -29,22 +29,22 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/bankaccounts")
-public class BankAccountController {
+@RequestMapping("/categories")
+public class CategoryController {
 
-    private final CreateBankAccountUseCase createUseCase;
-    private final ListBankAccountsUseCase listUseCase;
-    private final FindBankAccountUseCase findUseCase;
-    private final UpdateBankAccountUseCase updateUseCase;
-    private final DeleteBankAccountUseCase deleteUseCase;
+    private final CreateCategoryUseCase createUseCase;
+    private final ListCategoriesUseCase listUseCase;
+    private final FindCategoryUseCase findUseCase;
+    private final UpdateCategoryUseCase updateUseCase;
+    private final DeleteCategoryUseCase deleteUseCase;
     private final CurrentIdentity currentIdentity;
 
-    public BankAccountController(
-            CreateBankAccountUseCase createUseCase,
-            ListBankAccountsUseCase listUseCase,
-            FindBankAccountUseCase findUseCase,
-            UpdateBankAccountUseCase updateUseCase,
-            DeleteBankAccountUseCase deleteUseCase,
+    public CategoryController(
+            CreateCategoryUseCase createUseCase,
+            ListCategoriesUseCase listUseCase,
+            FindCategoryUseCase findUseCase,
+            UpdateCategoryUseCase updateUseCase,
+            DeleteCategoryUseCase deleteUseCase,
             CurrentIdentity currentIdentity
     ) {
         this.createUseCase = createUseCase;
@@ -57,13 +57,12 @@ public class BankAccountController {
 
     @PostMapping
     ResponseEntity<Object> create(
-            @Valid @RequestBody CreateBankAccountRequest request
+            @Valid @RequestBody CreateCategoryRequest request
     ) {
         var userId = currentIdentity.findCurrentAuthenticadedUser();
-        var input = new CreateBankAccountInput(
-                request.name(),
-                request.type(),
-                request.initialBalance()
+        var input = new CreateCategoryInput(
+                request.description(),
+                request.icon()
         );
 
         var result = createUseCase.execute(userId, input);
@@ -76,16 +75,16 @@ public class BankAccountController {
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(BankAccountResponse.from(result.value()));
+                .body(CategoryResponse.from(result.value()));
     }
 
     @GetMapping
-    ResponseEntity<List<BankAccountResponse>> list() {
+    ResponseEntity<List<CategoryResponse>> list() {
         var userId = currentIdentity.findCurrentAuthenticadedUser();
         var result = listUseCase.execute(userId);
 
         var responses = result.value().stream()
-                .map(BankAccountResponse::from)
+                .map(CategoryResponse::from)
                 .toList();
 
         return ResponseEntity.ok(responses);
@@ -102,25 +101,25 @@ public class BankAccountController {
                     .body(new ErrorResponse(result.errors()));
         }
 
-        return ResponseEntity.ok(BankAccountResponse.from(result.value()));
+        return ResponseEntity.ok(CategoryResponse.from(result.value()));
     }
 
     @PutMapping("/{id}")
     ResponseEntity<Object> update(
             @PathVariable UUID id,
-            @Valid @RequestBody UpdateBankAccountRequest request
+            @Valid @RequestBody UpdateCategoryRequest request
     ) {
         var userId = currentIdentity.findCurrentAuthenticadedUser();
-        var input = new UpdateBankAccountInput(
-                request.name(),
-                request.initialBalance()
+        var input = new UpdateCategoryInput(
+                request.description(),
+                request.icon()
         );
 
         var result = updateUseCase.execute(userId, id, input);
 
         if (result.isFailure()) {
             var error = result.errors().getFirst();
-            if (BankAccountMessages.ACCOUNT_NOT_FOUND.equals(error)) {
+            if (CategoryMessages.CATEGORY_NOT_FOUND.equals(error)) {
                 return ResponseEntity
                         .status(HttpStatus.NOT_FOUND)
                         .body(new ErrorResponse(result.errors()));
@@ -131,7 +130,7 @@ public class BankAccountController {
                     .body(new ErrorResponse(result.errors()));
         }
 
-        return ResponseEntity.ok(BankAccountResponse.from(result.value()));
+        return ResponseEntity.ok(CategoryResponse.from(result.value()));
     }
 
     @DeleteMapping("/{id}")
@@ -141,7 +140,7 @@ public class BankAccountController {
 
         if (result.isFailure()) {
             var error = result.errors().getFirst();
-            if (BankAccountMessages.ACCOUNT_HAS_TRANSACTIONS.equals(error)) {
+            if (CategoryMessages.CATEGORY_HAS_TRANSACTIONS.equals(error)) {
                 return ResponseEntity
                         .status(HttpStatus.CONFLICT)
                         .body(new ErrorResponse(result.errors()));
