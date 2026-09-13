@@ -11,7 +11,8 @@ public final class CategoryMapper {
         return new CategoryOutput(
                 category.getId(),
                 category.getDescription(),
-                category.getIcon()
+                category.getIcon(),
+                category.isFlexible()
         );
     }
 }

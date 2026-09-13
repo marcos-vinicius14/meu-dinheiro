@@ -2,5 +2,7 @@ package com.marcos.meudinheiro.transaction.domain.enums;
 
 public enum TransactionType {
     INCOME,
-    EXPENSE,
+    FIXED_EXPENSE,
+    FLEXIBLE_EXPENSE,
+    INSTALLMENT_EXPENSE,
 }

@@ -23,6 +23,9 @@ public class CategoryModel {
     @Column(length = 255)
     private String icon;
 
+    @Column(name = "is_flexible", nullable = false)
+    private boolean flexible;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private UserModel user;
@@ -33,20 +36,28 @@ public class CategoryModel {
     private CategoryModel(
             String description,
             String icon,
+            boolean flexible,
             UserModel user) {
         this.description = description;
         this.icon = icon;
+        this.flexible = flexible;
         this.user = user;
     }
 
     public static CategoryModel create(
             CategoryDescription description,
             CategoryIcon icon,
+            boolean flexible,
             UserModel user) {
         return new CategoryModel(
                 description.value(),
                 icon != null ? icon.value() : null,
+                flexible,
                 user);
+    }
+
+    public boolean isFlexible() {
+        return flexible;
     }
 
     public void updateDescription(CategoryDescription description) {

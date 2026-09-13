@@ -7,14 +7,16 @@ import java.util.UUID;
 public record CategoryResponse(
         UUID id,
         String description,
-        String icon
+        String icon,
+        boolean isFlexible
 ) {
 
     public static CategoryResponse from(CategoryOutput output) {
         return new CategoryResponse(
                 output.id(),
                 output.description(),
-                output.icon()
+                output.icon(),
+                output.isFlexible()
         );
     }
 }
