@@ -363,8 +363,8 @@ class CategoryIT extends AuthenticationTestSupport {
         var accountId = createBankAccount(userId);
 
         jdbcTemplate.update("""
-                INSERT INTO tb_transactions (id, user_id, bank_account_id, category_id, description, value, type, date)
-                VALUES (uuidv7(), ?, ?, ?, 'Teste', 50.00, 'EXPENSE', CURRENT_TIMESTAMP)
+                INSERT INTO tb_transactions (id, user_id, bank_account_id, category_id, description, value, type, status, due_date)
+                VALUES (uuidv7(), ?, ?, ?, 'Teste', 50.00, 'FLEXIBLE_EXPENSE', 'CONFIRMED', CURRENT_DATE)
                 """, userId, accountId, categoryId);
 
         mockMvc.perform(delete("/categories/{id}", categoryId)

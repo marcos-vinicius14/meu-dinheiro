@@ -46,6 +46,7 @@ public class CreateCategoryUseCaseImpl implements CreateCategoryUseCase {
         var category = CategoryModel.create(
                 validation.value().description(),
                 validation.value().icon(),
+                input.isFlexible(),
                 userResolver.resolve(userId)
         );
 

@@ -5,6 +5,7 @@ import java.util.UUID;
 public record CategoryOutput(
         UUID id,
         String description,
-        String icon
+        String icon,
+        boolean isFlexible
 ) {
 }

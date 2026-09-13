@@ -62,7 +62,8 @@ public class CategoryController {
         var userId = currentIdentity.findCurrentAuthenticadedUser();
         var input = new CreateCategoryInput(
                 request.description(),
-                request.icon()
+                request.icon(),
+                request.isFlexibleOrDefault()
         );
 
         var result = createUseCase.execute(userId, input);

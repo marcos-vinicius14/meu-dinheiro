@@ -18,6 +18,7 @@ class CategoryModelTest {
         var category = CategoryModel.create(
                 CategoryDescription.create("Alimentação").value(),
                 CategoryIcon.create("food").value(),
+                false,
                 user
         );
 
@@ -31,6 +32,7 @@ class CategoryModelTest {
         var category = CategoryModel.create(
                 CategoryDescription.create("Transporte").value(),
                 null,
+                false,
                 createUser()
         );
 
@@ -43,6 +45,7 @@ class CategoryModelTest {
         var category = CategoryModel.create(
                 CategoryDescription.create("Lazer").value(),
                 null,
+                false,
                 user
         );
 
@@ -56,6 +59,7 @@ class CategoryModelTest {
         var category = CategoryModel.create(
                 CategoryDescription.create("Lazer").value(),
                 null,
+                false,
                 owner
         );
 
@@ -67,6 +71,7 @@ class CategoryModelTest {
         var category = CategoryModel.create(
                 CategoryDescription.create("Antiga").value(),
                 null,
+                false,
                 createUser()
         );
 
@@ -80,6 +85,7 @@ class CategoryModelTest {
         var category = CategoryModel.create(
                 CategoryDescription.create("Lazer").value(),
                 CategoryIcon.create("old").value(),
+                false,
                 createUser()
         );
 
@@ -93,6 +99,7 @@ class CategoryModelTest {
         var category = CategoryModel.create(
                 CategoryDescription.create("Lazer").value(),
                 CategoryIcon.create("old").value(),
+                false,
                 createUser()
         );
 

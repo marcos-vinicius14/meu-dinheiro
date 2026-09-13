@@ -2,6 +2,7 @@ package com.marcos.meudinheiro.category.application.contract.dto;
 
 public record CreateCategoryInput(
         String description,
-        String icon
+        String icon,
+        boolean isFlexible
 ) {
 }
