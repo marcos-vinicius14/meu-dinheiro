@@ -1,18 +1,18 @@
 package com.marcos.meudinheiro.identity;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.test.context.TestPropertySource;
-import org.springframework.http.MediaType;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 
-@TestPropertySource(properties = "security.login.max-attempts=2")
-class LoginRateLimitIT extends AuthenticationTestSupport {
+import com.marcos.meudinheiro.IntegrationTestSupport;
+
+class LoginRateLimitIT extends IntegrationTestSupport {
 
     @Test
-    void loginBlockedAfterMaxFailedAttemptsEvenWithCorrectPassword() throws Exception {
+    void loginBlockedAfterMaxFailedAttemptsEvenWithCorrectPassword() {
         var email = "ratelimit-blocked@example.com";
         var password = "password123";
 
@@ -21,15 +21,13 @@ class LoginRateLimitIT extends AuthenticationTestSupport {
         failedLogin(email);
         failedLogin(email);
 
-        mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(loginBody(email, password)))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.errors[0]").value("Credenciais inválidas"));
+        var result = login(email, password, 401);
+
+        assertThat(result).contains("Credenciais inválidas");
     }
 
     @Test
-    void blockedLoginReturnsSameMessageAsWrongCredentials() throws Exception {
+    void blockedLoginReturnsSameMessageAsWrongCredentials() {
         var email = "ratelimit-opaque@example.com";
         var password = "password123";
 
@@ -38,24 +36,14 @@ class LoginRateLimitIT extends AuthenticationTestSupport {
         failedLogin(email);
         failedLogin(email);
 
-        var blockedResponse = mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(loginBody(email, password)))
-                .andExpect(status().isUnauthorized())
-                .andReturn().getResponse().getContentAsString();
+        var blockedResponse = login(email, password, 401);
+        var wrongPasswordResponse = login("ratelimit-opaque-2@example.com", "wrong-pass", 401);
 
-        var wrongPasswordResponse = mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(loginBody("ratelimit-opaque-2@example.com", "wrong-pass")))
-                .andExpect(status().isUnauthorized())
-                .andReturn().getResponse().getContentAsString();
-
-        org.assertj.core.api.Assertions.assertThat(blockedResponse)
-                .isEqualTo(wrongPasswordResponse);
+        assertThat(blockedResponse).isEqualTo(wrongPasswordResponse);
     }
 
     @Test
-    void failureCounterResetsAfterSuccessfulLogin() throws Exception {
+    void failureCounterResetsAfterSuccessfulLogin() {
         var email = "ratelimit-reset@example.com";
         var password = "password123";
 
@@ -65,14 +53,11 @@ class LoginRateLimitIT extends AuthenticationTestSupport {
         login(email, password);
         failedLogin(email);
 
-        mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(loginBody(email, password)))
-                .andExpect(status().isNoContent());
+        login(email, password, 204);
     }
 
     @Test
-    void blockDoesNotAffectOtherAccounts() throws Exception {
+    void blockDoesNotAffectOtherAccounts() {
         var blockedEmail = "ratelimit-blocked-other@example.com";
         var freeEmail = "ratelimit-free@example.com";
         var password = "password123";
@@ -83,17 +68,28 @@ class LoginRateLimitIT extends AuthenticationTestSupport {
         failedLogin(blockedEmail);
         failedLogin(blockedEmail);
 
-        mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(loginBody(freeEmail, password)))
-                .andExpect(status().isNoContent());
+        login(freeEmail, password, 204);
     }
 
-    private void failedLogin(String email) throws Exception {
-        mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(loginBody(email, "wrong-password")))
-                .andExpect(status().isUnauthorized());
+    private void failedLogin(String email) {
+        login(email, "wrong-password", 401);
+    }
+
+    private String login(String email, String password, int expectedStatus) {
+        var headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_TYPE, "application/json");
+
+        var response = restTemplate.exchange(
+                "/auth/login",
+                HttpMethod.POST,
+                new HttpEntity<>(loginBody(email, password), headers),
+                String.class
+        );
+
+        assertThat(response.getStatusCode().value())
+                .as("login %s", email)
+                .isEqualTo(expectedStatus);
+        return response.getBody();
     }
 
     private String loginBody(String email, String password) {

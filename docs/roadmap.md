@@ -13,6 +13,17 @@ v12 Event Sourcing em alguns agregados
 v13 Observabilidade completa
 v14 Separação seletiva em serviços
 
+### Pendências da v1 (backlog pós-v1)
+
+- Derivar `liquidBalance` automaticamente dos saldos das contas bancárias
+  (`initialBalance` + transações CONFIRMED) em vez de recebê-lo no request do
+  check-in/simulação; persistir `targetSavings` e `flexibleBudgetCap` como
+  configuração por usuário.
+- Endpoint para cancelar um bundle inteiro (hoje as parcelas individuais são
+  imutáveis por design e não há cancelamento do parcelamento).
+- Paginação e filtros na listagem de transações (período, categoria, conta, tipo,
+  status).
+
 
 ### Description
 Ledger contábil de dupla entrada para garantir consistência.

@@ -46,7 +46,7 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
         FilterChain filterChain
     ) throws ServletException, IOException {
 
-        if (!rateLimiter.tryAcquire(request.getRemoteAddr())) {
+        if (!rateLimiter.tryAcquire(clientIp(request))) {
             response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 
@@ -59,5 +59,20 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * IP do cliente: primeiro valor de X-Forwarded-For (cenário real atrás de
+     * proxy/load balancer); fallback para o remote addr da conexão.
+     */
+    private static String clientIp(HttpServletRequest request) {
+        var forwardedFor = request.getHeader("X-Forwarded-For");
+        if (forwardedFor != null && !forwardedFor.isBlank()) {
+            var firstIp = forwardedFor.split(",", 2)[0].trim();
+            if (!firstIp.isEmpty()) {
+                return firstIp;
+            }
+        }
+        return request.getRemoteAddr();
     }
 }

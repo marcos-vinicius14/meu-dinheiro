@@ -1,8 +1,6 @@
 package com.marcos.meudinheiro.identity;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -14,18 +12,20 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 
+import com.marcos.meudinheiro.IntegrationTestSupport;
 import com.marcos.meudinheiro.identity.infraestructure.security.token.JwtTokenService;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 
-import jakarta.servlet.http.Cookie;
-
-class CookieAuthenticationIT extends AuthenticationTestSupport {
+class CookieAuthenticationIT extends IntegrationTestSupport {
 
     @Autowired
     private RSAPublicKey publicKey;
@@ -34,32 +34,32 @@ class CookieAuthenticationIT extends AuthenticationTestSupport {
     private RSAPrivateKey privateKey;
 
     @Test
-    void validAccessTokenCookieGrantsAccessToProtectedEndpoint() throws Exception {
+    void validAccessTokenCookieGrantsAccessToProtectedEndpoint() {
         var email = "cookie-valid@example.com";
         var password = "password123";
 
         createUser(email, password);
         var session = login(email, password);
 
-        mockMvc.perform(get("/auth/me")
-                        .cookie(session.accessTokenCookie()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").exists())
-                .andExpect(jsonPath("$.email").value(email));
+        var response = authenticated(session).get("/auth/me");
+
+        assertThat(response.status()).isEqualTo(200);
+        assertThat(response.body()).contains("\"email\":\"" + email + "\"");
     }
 
     @Test
-    void missingAccessTokenCookieReturnsUnauthorized() throws Exception {
-        mockMvc.perform(get("/auth/me"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.errors").isArray());
+    void missingAccessTokenCookieReturnsUnauthorized() {
+        var response = restTemplate.getForEntity("/auth/me", String.class);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(401);
+        assertThat(response.getBody()).contains("errors");
     }
 
     @Test
-    void garbageAccessTokenCookieReturnsUnauthorized() throws Exception {
-        mockMvc.perform(get("/auth/me")
-                        .cookie(new Cookie(ACCESS_TOKEN_COOKIE, "garbage-token")))
-                .andExpect(status().isUnauthorized());
+    void garbageAccessTokenCookieReturnsUnauthorized() {
+        var response = withCookie(ACCESS_TOKEN_COOKIE, "garbage-token").get("/auth/me");
+
+        assertThat(response.status()).isEqualTo(401);
     }
 
     @Test
@@ -72,13 +72,13 @@ class CookieAuthenticationIT extends AuthenticationTestSupport {
                 Instant.now().plusSeconds(600)
         );
 
-        mockMvc.perform(get("/auth/me")
-                        .cookie(new Cookie(ACCESS_TOKEN_COOKIE, token)))
-                .andExpect(status().isUnauthorized());
+        var response = withCookie(ACCESS_TOKEN_COOKIE, token).get("/auth/me");
+
+        assertThat(response.status()).isEqualTo(401);
     }
 
     @Test
-    void expiredTokenIsRejected() throws Exception {
+    void expiredTokenIsRejected() {
         var now = Instant.now();
 
         var token = encodeToken(
@@ -87,9 +87,9 @@ class CookieAuthenticationIT extends AuthenticationTestSupport {
                 now.minusSeconds(300)
         );
 
-        mockMvc.perform(get("/auth/me")
-                        .cookie(new Cookie(ACCESS_TOKEN_COOKIE, token)))
-                .andExpect(status().isUnauthorized());
+        var response = withCookie(ACCESS_TOKEN_COOKIE, token).get("/auth/me");
+
+        assertThat(response.status()).isEqualTo(401);
     }
 
     private String encodeToken(

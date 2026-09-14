@@ -1,38 +1,36 @@
 package com.marcos.meudinheiro.identity;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 
+import com.marcos.meudinheiro.IntegrationTestSupport;
 import com.marcos.meudinheiro.identity.application.contract.RefreshTokenUseCase;
 import com.marcos.meudinheiro.identity.infraestructure.security.token.RefreshTokenHash;
 
-import jakarta.servlet.http.Cookie;
-
-class LogoutIT extends AuthenticationTestSupport {
+class LogoutIT extends IntegrationTestSupport {
 
     @Autowired
     private RefreshTokenUseCase refreshTokenUseCase;
 
     @Test
-    void logoutRevokesCurrentSessionAndExpiresCookies() throws Exception {
+    void logoutRevokesCurrentSessionAndExpiresCookies() {
         var email = "logout-revoke@example.com";
         var password = "password123";
 
         createUser(email, password);
         var session = login(email, password);
 
-        var result = mockMvc.perform(post("/auth/logout")
-                        .cookie(session.refreshTokenCookie()))
-                .andExpect(status().isNoContent())
-                .andReturn();
+        var response = exchangeWithCookie("/auth/logout", HttpMethod.POST,
+                REFRESH_TOKEN_COOKIE, session.refreshToken());
 
-        var setCookies = result.getResponse()
-                .getHeaders(HttpHeaders.SET_COOKIE);
+        assertThat(response.getStatusCode().value()).isEqualTo(204);
+
+        var setCookies = response.getHeaders().get(HttpHeaders.SET_COOKIE);
 
         assertThat(setCookies)
                 .anyMatch(header -> header.startsWith("access_token=")
@@ -48,20 +46,22 @@ class LogoutIT extends AuthenticationTestSupport {
     }
 
     @Test
-    void logoutWithoutCookieStillSucceeds() throws Exception {
-        mockMvc.perform(post("/auth/logout"))
-                .andExpect(status().isNoContent());
+    void logoutWithoutCookieStillSucceeds() {
+        var response = restTemplate.postForEntity("/auth/logout", null, String.class);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(204);
     }
 
     @Test
-    void logoutWithInvalidTokenStillSucceeds() throws Exception {
-        mockMvc.perform(post("/auth/logout")
-                        .cookie(new Cookie(REFRESH_TOKEN_COOKIE, "not-a-real-token")))
-                .andExpect(status().isNoContent());
+    void logoutWithInvalidTokenStillSucceeds() {
+        var response = exchangeWithCookie("/auth/logout", HttpMethod.POST,
+                REFRESH_TOKEN_COOKIE, "not-a-real-token");
+
+        assertThat(response.getStatusCode().value()).isEqualTo(204);
     }
 
     @Test
-    void logoutDoesNotRevokeOtherSessions() throws Exception {
+    void logoutDoesNotRevokeOtherSessions() {
         var email = "logout-multi-session@example.com";
         var password = "password123";
 
@@ -70,9 +70,10 @@ class LogoutIT extends AuthenticationTestSupport {
         var firstSession = login(email, password);
         var secondSession = login(email, password);
 
-        mockMvc.perform(post("/auth/logout")
-                        .cookie(firstSession.refreshTokenCookie()))
-                .andExpect(status().isNoContent());
+        var response = exchangeWithCookie("/auth/logout", HttpMethod.POST,
+                REFRESH_TOKEN_COOKIE, firstSession.refreshToken());
+
+        assertThat(response.getStatusCode().value()).isEqualTo(204);
 
         // Estado no banco: sessao do cookie revogada, outra sessao intacta.
         // (Nao reapresentar o token revogado ao use case: isso e reuso e,
@@ -90,19 +91,32 @@ class LogoutIT extends AuthenticationTestSupport {
     }
 
     @Test
-    void logoutTwiceWithSameCookieIsIdempotent() throws Exception {
+    void logoutTwiceWithSameCookieIsIdempotent() {
         var email = "logout-idempotent@example.com";
         var password = "password123";
 
         createUser(email, password);
         var session = login(email, password);
 
-        mockMvc.perform(post("/auth/logout")
-                        .cookie(session.refreshTokenCookie()))
-                .andExpect(status().isNoContent());
+        var first = exchangeWithCookie("/auth/logout", HttpMethod.POST,
+                REFRESH_TOKEN_COOKIE, session.refreshToken());
+        var second = exchangeWithCookie("/auth/logout", HttpMethod.POST,
+                REFRESH_TOKEN_COOKIE, session.refreshToken());
 
-        mockMvc.perform(post("/auth/logout")
-                        .cookie(session.refreshTokenCookie()))
-                .andExpect(status().isNoContent());
+        assertThat(first.getStatusCode().value()).isEqualTo(204);
+        assertThat(second.getStatusCode().value()).isEqualTo(204);
+    }
+
+    private org.springframework.http.ResponseEntity<String> exchangeWithCookie(
+            String uri,
+            HttpMethod method,
+            String cookieName,
+            String cookieValue
+    ) {
+        var headers = new HttpHeaders();
+        headers.add(HttpHeaders.COOKIE, cookieName + "=" + cookieValue);
+        headers.add(HttpHeaders.CONTENT_TYPE, "application/json");
+
+        return restTemplate.exchange(uri, method, new HttpEntity<>(headers), String.class);
     }
 }

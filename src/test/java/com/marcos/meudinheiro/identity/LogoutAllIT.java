@@ -1,18 +1,19 @@
 package com.marcos.meudinheiro.identity;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 
+import com.marcos.meudinheiro.IntegrationTestSupport;
 import com.marcos.meudinheiro.identity.infraestructure.security.token.RefreshTokenHash;
 
-class LogoutAllIT extends AuthenticationTestSupport {
+class LogoutAllIT extends IntegrationTestSupport {
 
     @Test
-    void logoutAllRevokesEverySessionOfCurrentUser() throws Exception {
+    void logoutAllRevokesEverySessionOfCurrentUser() {
         var email = "logout-all@example.com";
         var password = "password123";
 
@@ -21,29 +22,27 @@ class LogoutAllIT extends AuthenticationTestSupport {
         var firstSession = login(email, password);
         var secondSession = login(email, password);
 
-        mockMvc.perform(post("/auth/logout-all")
-                        .cookie(firstSession.accessTokenCookie()))
-                .andExpect(status().isNoContent());
+        var response = authenticated(firstSession).post("/auth/logout-all", null);
+
+        assertThat(response.status()).isEqualTo(204);
 
         assertThat(activeTokenCount(firstSession.refreshToken())).isZero();
         assertThat(activeTokenCount(secondSession.refreshToken())).isZero();
     }
 
     @Test
-    void logoutAllExpiresAuthCookies() throws Exception {
+    void logoutAllExpiresAuthCookies() {
         var email = "logout-all-cookies@example.com";
         var password = "password123";
 
         createUser(email, password);
         var session = login(email, password);
 
-        var result = mockMvc.perform(post("/auth/logout-all")
-                        .cookie(session.accessTokenCookie()))
-                .andExpect(status().isNoContent())
-                .andReturn();
+        var response = authenticated(session).post("/auth/logout-all", null);
 
-        var setCookies = result.getResponse()
-                .getHeaders(HttpHeaders.SET_COOKIE);
+        assertThat(response.status()).isEqualTo(204);
+
+        var setCookies = response.setCookies();
 
         assertThat(setCookies)
                 .anyMatch(header -> header.startsWith("access_token=")
@@ -54,7 +53,7 @@ class LogoutAllIT extends AuthenticationTestSupport {
     }
 
     @Test
-    void logoutAllDoesNotAffectOtherUsers() throws Exception {
+    void logoutAllDoesNotAffectOtherUsers() {
         var email = "logout-all-owner@example.com";
         var otherEmail = "logout-all-other@example.com";
         var password = "password123";
@@ -65,18 +64,19 @@ class LogoutAllIT extends AuthenticationTestSupport {
         var session = login(email, password);
         var otherSession = login(otherEmail, password);
 
-        mockMvc.perform(post("/auth/logout-all")
-                        .cookie(session.accessTokenCookie()))
-                .andExpect(status().isNoContent());
+        var response = authenticated(session).post("/auth/logout-all", null);
+
+        assertThat(response.status()).isEqualTo(204);
 
         assertThat(activeTokenCount(otherSession.refreshToken()))
                 .isEqualTo(1);
     }
 
     @Test
-    void logoutAllWithoutAccessTokenReturnsUnauthorized() throws Exception {
-        mockMvc.perform(post("/auth/logout-all"))
-                .andExpect(status().isUnauthorized());
+    void logoutAllWithoutAccessTokenReturnsUnauthorized() {
+        var response = restTemplate.postForEntity("/auth/logout-all", null, String.class);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(401);
     }
 
     private int activeTokenCount(String rawRefreshToken) {

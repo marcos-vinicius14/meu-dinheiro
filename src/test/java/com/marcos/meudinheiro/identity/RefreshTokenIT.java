@@ -1,5 +1,7 @@
 package com.marcos.meudinheiro.identity;
 
+import com.marcos.meudinheiro.IntegrationTestSupport;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
@@ -9,7 +11,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import com.marcos.meudinheiro.identity.application.contract.RefreshTokenUseCase;
 import com.marcos.meudinheiro.identity.infraestructure.security.token.RefreshTokenHash;
 
-class RefreshTokenIT extends AuthenticationTestSupport {
+class RefreshTokenIT extends IntegrationTestSupport {
 
     @Autowired
     private RefreshTokenUseCase refreshTokenUseCase;
