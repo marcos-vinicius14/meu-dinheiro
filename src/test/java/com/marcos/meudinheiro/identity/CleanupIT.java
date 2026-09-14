@@ -1,5 +1,7 @@
 package com.marcos.meudinheiro.identity;
 
+import com.marcos.meudinheiro.IntegrationTestSupport;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
@@ -8,7 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import com.marcos.meudinheiro.identity.infraestructure.jobs.RefreshTokenCleanupService;
 import com.marcos.meudinheiro.identity.infraestructure.security.token.RefreshTokenHash;
 
-class CleanupIT extends AuthenticationTestSupport {
+class CleanupIT extends IntegrationTestSupport {
 
     @Autowired
     private RefreshTokenCleanupService cleanupService;

@@ -1,42 +1,44 @@
 package com.marcos.meudinheiro.identity;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import com.marcos.meudinheiro.IntegrationTestSupport;
 import com.marcos.meudinheiro.identity.infraestructure.security.token.RefreshTokenHash;
 
-class LoginIT extends AuthenticationTestSupport {
+class LoginIT extends IntegrationTestSupport {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
     @Test
-    void validCredentialsReturnNoContentAndSetAuthCookies() throws Exception {
+    void validCredentialsReturnNoContentAndSetAuthCookies() {
         var email = "login-valid@example.com";
         var password = "password123";
 
         createUser(email, password);
 
-        var result = mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+        var response = restTemplate.postForEntity(
+                "/auth/login",
+                new org.springframework.http.HttpEntity<>(
+                        """
                                 {
                                   "email": "%s",
                                   "password": "%s"
                                 }
-                                """.formatted(email, password)))
-                .andExpect(status().isNoContent())
-                .andReturn();
+                                """.formatted(email, password),
+                        jsonHeaders()
+                ),
+                String.class
+        );
 
-        var setCookies = result.getResponse()
-                .getHeaders(HttpHeaders.SET_COOKIE);
+        assertThat(response.getStatusCode().value()).isEqualTo(204);
+
+        var setCookies = response.getHeaders().get(HttpHeaders.SET_COOKIE);
 
         assertThat(setCookies)
                 .anySatisfy(header -> {
@@ -52,12 +54,12 @@ class LoginIT extends AuthenticationTestSupport {
     }
 
     @Test
-    void validCredentialsPersistActiveRefreshTokenHash() throws Exception {
+    void validCredentialsPersistActiveRefreshTokenHash() {
         var email = "login-persist@example.com";
         var password = "password123";
 
         createUser(email, password);
-        var session = login(email, password);
+        var session = loginReal(email, password);
 
         var tokenHash = RefreshTokenHash.sha256(session.refreshToken());
 
@@ -71,69 +73,96 @@ class LoginIT extends AuthenticationTestSupport {
     }
 
     @Test
-    void wrongPasswordReturnsUnauthorized() throws Exception {
+    void wrongPasswordReturnsUnauthorized() {
         var email = "login-wrong-password@example.com";
         var password = "password123";
 
         createUser(email, password);
 
-        mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+        var response = restTemplate.postForEntity(
+                "/auth/login",
+                new org.springframework.http.HttpEntity<>(
+                        """
                                 {
                                   "email": "%s",
                                   "password": "wrong-password"
                                 }
-                                """.formatted(email)))
-                .andExpect(status().isUnauthorized());
+                                """.formatted(email),
+                        jsonHeaders()
+                ),
+                String.class
+        );
+
+        assertThat(response.getStatusCode().value()).isEqualTo(401);
     }
 
     @Test
-    void unknownEmailReturnsUnauthorized() throws Exception {
-        mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+    void unknownEmailReturnsUnauthorized() {
+        var response = restTemplate.postForEntity(
+                "/auth/login",
+                new org.springframework.http.HttpEntity<>(
+                        """
                                 {
                                   "email": "does-not-exist@example.com",
                                   "password": "password123"
                                 }
-                                """))
-                .andExpect(status().isUnauthorized());
+                                """,
+                        jsonHeaders()
+                ),
+                String.class
+        );
+
+        assertThat(response.getStatusCode().value()).isEqualTo(401);
     }
 
     @Test
-    void malformedEmailReturnsBadRequest() throws Exception {
-        mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+    void malformedEmailReturnsBadRequest() {
+        var response = restTemplate.postForEntity(
+                "/auth/login",
+                new org.springframework.http.HttpEntity<>(
+                        """
                                 {
                                   "email": "not-an-email",
                                   "password": "password123"
                                 }
-                                """))
-                .andExpect(status().isBadRequest());
+                                """,
+                        jsonHeaders()
+                ),
+                String.class
+        );
+
+        assertThat(response.getStatusCode().value()).isEqualTo(400);
     }
 
     @Test
-    void shortPasswordReturnsBadRequest() throws Exception {
-        mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+    void shortPasswordReturnsBadRequest() {
+        var response = restTemplate.postForEntity(
+                "/auth/login",
+                new org.springframework.http.HttpEntity<>(
+                        """
                                 {
                                   "email": "login-short-pw@example.com",
                                   "password": "123"
                                 }
-                                """))
-                .andExpect(status().isBadRequest());
+                                """,
+                        jsonHeaders()
+                ),
+                String.class
+        );
+
+        assertThat(response.getStatusCode().value()).isEqualTo(400);
     }
 
     @Test
-    void uppercaseEmailLoginSucceeds() throws Exception {
+    void uppercaseEmailLoginSucceeds() {
         var email = "login-uppercase@example.com";
         var password = "password123";
 
         createUser(email, password);
 
-        login(email.toUpperCase(), password);
+        var session = loginReal(email.toUpperCase(), password);
+
+        assertThat(session.accessToken()).isNotBlank();
+        assertThat(session.refreshToken()).isNotBlank();
     }
 }

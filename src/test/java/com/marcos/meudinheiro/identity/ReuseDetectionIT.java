@@ -1,17 +1,19 @@
 package com.marcos.meudinheiro.identity;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 
+import com.marcos.meudinheiro.IntegrationTestSupport;
 import com.marcos.meudinheiro.identity.infraestructure.security.token.RefreshTokenHash;
 
-class ReuseDetectionIT extends AuthenticationTestSupport {
+class ReuseDetectionIT extends IntegrationTestSupport {
 
     @Test
-    void reusingRotatedTokenRevokesAllUserSessions() throws Exception {
+    void reusingRotatedTokenRevokesAllUserSessions() {
         var email = "reuse-revoke-all@example.com";
         var password = "password123";
 
@@ -20,14 +22,12 @@ class ReuseDetectionIT extends AuthenticationTestSupport {
         var secondSession = login(email, password);
 
         // Rotacao legitima: o token antigo da primeira sessao morre
-        mockMvc.perform(post("/auth/refresh")
-                        .cookie(firstSession.refreshTokenCookie()))
-                .andExpect(status().isNoContent());
+        assertThat(refresh(firstSession.refreshToken()).getStatusCode().value())
+                .isEqualTo(204);
 
         // Reuso do token ja rotacionado = roubo presumido
-        mockMvc.perform(post("/auth/refresh")
-                        .cookie(firstSession.refreshTokenCookie()))
-                .andExpect(status().isUnauthorized());
+        assertThat(refresh(firstSession.refreshToken()).getStatusCode().value())
+                .isEqualTo(401);
 
         // Colateral: TODAS as sessoes do usuario morrem
         assertThat(activeTokenCount(secondSession.refreshToken()))
@@ -35,7 +35,7 @@ class ReuseDetectionIT extends AuthenticationTestSupport {
     }
 
     @Test
-    void reuseDetectionDoesNotAffectOtherUsers() throws Exception {
+    void reuseDetectionDoesNotAffectOtherUsers() {
         var victimEmail = "reuse-victim@example.com";
         var bystanderEmail = "reuse-bystander@example.com";
         var password = "password123";
@@ -46,20 +46,18 @@ class ReuseDetectionIT extends AuthenticationTestSupport {
         var victimSession = login(victimEmail, password);
         var bystanderSession = login(bystanderEmail, password);
 
-        mockMvc.perform(post("/auth/refresh")
-                        .cookie(victimSession.refreshTokenCookie()))
-                .andExpect(status().isNoContent());
+        assertThat(refresh(victimSession.refreshToken()).getStatusCode().value())
+                .isEqualTo(204);
 
-        mockMvc.perform(post("/auth/refresh")
-                        .cookie(victimSession.refreshTokenCookie()))
-                .andExpect(status().isUnauthorized());
+        assertThat(refresh(victimSession.refreshToken()).getStatusCode().value())
+                .isEqualTo(401);
 
         assertThat(activeTokenCount(bystanderSession.refreshToken()))
                 .isEqualTo(1);
     }
 
     @Test
-    void expiredTokenDoesNotTriggerReuseDetection() throws Exception {
+    void expiredTokenDoesNotTriggerReuseDetection() {
         var email = "reuse-expired@example.com";
         var password = "password123";
 
@@ -73,13 +71,25 @@ class ReuseDetectionIT extends AuthenticationTestSupport {
                 RefreshTokenHash.sha256(firstSession.refreshToken())
         );
 
-        mockMvc.perform(post("/auth/refresh")
-                        .cookie(firstSession.refreshTokenCookie()))
-                .andExpect(status().isUnauthorized());
+        assertThat(refresh(firstSession.refreshToken()).getStatusCode().value())
+                .isEqualTo(401);
 
         // A outra sessao sobrevive: expiracao nao e roubo
         assertThat(activeTokenCount(secondSession.refreshToken()))
                 .isEqualTo(1);
+    }
+
+    private org.springframework.http.ResponseEntity<String> refresh(String refreshToken) {
+        var headers = new HttpHeaders();
+        headers.add(HttpHeaders.COOKIE, REFRESH_TOKEN_COOKIE + "=" + refreshToken);
+        headers.add(HttpHeaders.CONTENT_TYPE, "application/json");
+
+        return restTemplate.exchange(
+                "/auth/refresh",
+                HttpMethod.POST,
+                new HttpEntity<>(headers),
+                String.class
+        );
     }
 
     private int activeTokenCount(String rawRefreshToken) {

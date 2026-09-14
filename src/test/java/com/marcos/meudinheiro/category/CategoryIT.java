@@ -1,19 +1,13 @@
 package com.marcos.meudinheiro.category;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.UUID;
 
-import com.marcos.meudinheiro.identity.AuthenticationTestSupport;
+import com.marcos.meudinheiro.IntegrationTestSupport;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.MediaType;
 
-class CategoryIT extends AuthenticationTestSupport {
+class CategoryIT extends IntegrationTestSupport {
 
     @Test
     void createCategoryWithIconReturnsCreated() throws Exception {
@@ -22,19 +16,17 @@ class CategoryIT extends AuthenticationTestSupport {
         createUser(email, password);
         var session = login(email, password);
 
-        mockMvc.perform(post("/categories")
-                        .cookie(session.accessTokenCookie())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "description": "Alimentação",
-                                  "icon": "food"
-                                }
-                                """))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").exists())
-                .andExpect(jsonPath("$.description").value("Alimentação"))
-                .andExpect(jsonPath("$.icon").value("food"));
+        var result = authenticated(session).post("/categories", """
+                {
+                  "description": "Alimentação",
+                  "icon": "food"
+                }
+                """);
+
+        assertThat(result.status()).isEqualTo(201);
+        assertThat(result.body()).contains("\"description\":\"Alimentação\"");
+        assertThat(result.body()).contains("\"icon\":\"food\"");
+        assertThat(result.body()).contains("\"isFlexible\":false");
     }
 
     @Test
@@ -44,17 +36,15 @@ class CategoryIT extends AuthenticationTestSupport {
         createUser(email, password);
         var session = login(email, password);
 
-        mockMvc.perform(post("/categories")
-                        .cookie(session.accessTokenCookie())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "description": "Transporte"
-                                }
-                                """))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.description").value("Transporte"))
-                .andExpect(jsonPath("$.icon").doesNotExist());
+        var result = authenticated(session).post("/categories", """
+                {
+                  "description": "Transporte"
+                }
+                """);
+
+        assertThat(result.status()).isEqualTo(201);
+        assertThat(result.body()).contains("\"description\":\"Transporte\"");
+        assertThat(result.body()).contains("\"icon\":null");
     }
 
     @Test
@@ -64,15 +54,13 @@ class CategoryIT extends AuthenticationTestSupport {
         createUser(email, password);
         var session = login(email, password);
 
-        mockMvc.perform(post("/categories")
-                        .cookie(session.accessTokenCookie())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "icon": "food"
-                                }
-                                """))
-                .andExpect(status().isBadRequest());
+        var result = authenticated(session).post("/categories", """
+                {
+                  "icon": "food"
+                }
+                """);
+
+        assertThat(result.status()).isEqualTo(400);
     }
 
     @Test
@@ -82,15 +70,13 @@ class CategoryIT extends AuthenticationTestSupport {
         createUser(email, password);
         var session = login(email, password);
 
-        mockMvc.perform(post("/categories")
-                        .cookie(session.accessTokenCookie())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "description": "   "
-                                }
-                                """))
-                .andExpect(status().isBadRequest());
+        var result = authenticated(session).post("/categories", """
+                {
+                  "description": "   "
+                }
+                """);
+
+        assertThat(result.status()).isEqualTo(400);
     }
 
     @Test
@@ -100,16 +86,14 @@ class CategoryIT extends AuthenticationTestSupport {
         createUser(email, password);
         var session = login(email, password);
 
-        mockMvc.perform(post("/categories")
-                        .cookie(session.accessTokenCookie())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "description": "Ab"
-                                }
-                                """))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors[0]").value("Descrição da categoria deve ter entre 3 e 100 caracteres"));
+        var result = authenticated(session).post("/categories", """
+                {
+                  "description": "Ab"
+                }
+                """);
+
+        assertThat(result.status()).isEqualTo(400);
+        assertThat(result.body()).contains("Descrição da categoria deve ter entre 3 e 100 caracteres");
     }
 
     @Test
@@ -119,16 +103,14 @@ class CategoryIT extends AuthenticationTestSupport {
         createUser(email, password);
         var session = login(email, password);
 
-        mockMvc.perform(post("/categories")
-                        .cookie(session.accessTokenCookie())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "description": "%s"
-                                }
-                                """.formatted("a".repeat(101))))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors[0]").value("Descrição da categoria deve ter entre 3 e 100 caracteres"));
+        var result = authenticated(session).post("/categories", """
+                {
+                  "description": "%s"
+                }
+                """.formatted("a".repeat(101)));
+
+        assertThat(result.status()).isEqualTo(400);
+        assertThat(result.body()).contains("Descrição da categoria deve ter entre 3 e 100 caracteres");
     }
 
     @Test
@@ -138,19 +120,17 @@ class CategoryIT extends AuthenticationTestSupport {
         createUser(email, password);
         var session = login(email, password);
 
-        createCategory(session, "Moradia", "home");
+        createCategory(session, "Moradia", false);
 
-        mockMvc.perform(post("/categories")
-                        .cookie(session.accessTokenCookie())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "description": "   Moradia  ",
-                                  "icon": "house"
-                                }
-                                """))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors[0]").value("Você já possui uma categoria com essa descrição"));
+        var result = authenticated(session).post("/categories", """
+                {
+                  "description": "   Moradia  ",
+                  "icon": "house"
+                }
+                """);
+
+        assertThat(result.status()).isEqualTo(400);
+        assertThat(result.body()).contains("Você já possui uma categoria com essa descrição");
     }
 
     @Test
@@ -163,18 +143,16 @@ class CategoryIT extends AuthenticationTestSupport {
         var ownerSession = login(ownerEmail, password);
         var otherSession = login(otherEmail, password);
 
-        createCategory(ownerSession, "Saúde", "health");
+        createCategory(ownerSession, "Saúde", false);
 
-        mockMvc.perform(post("/categories")
-                        .cookie(otherSession.accessTokenCookie())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "description": "Saúde",
-                                  "icon": "heart"
-                                }
-                                """))
-                .andExpect(status().isCreated());
+        var result = authenticated(otherSession).post("/categories", """
+                {
+                  "description": "Saúde",
+                  "icon": "heart"
+                }
+                """);
+
+        assertThat(result.status()).isEqualTo(201);
     }
 
     @Test
@@ -187,14 +165,14 @@ class CategoryIT extends AuthenticationTestSupport {
         var ownerSession = login(ownerEmail, password);
         var otherSession = login(otherEmail, password);
 
-        createCategory(ownerSession, "Categoria do Dono", "tag");
-        createCategory(otherSession, "Categoria de Outro", "tag");
+        createCategory(ownerSession, "Categoria do Dono", false);
+        createCategory(otherSession, "Categoria de Outro", false);
 
-        mockMvc.perform(get("/categories")
-                        .cookie(ownerSession.accessTokenCookie()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].description").value("Categoria do Dono"));
+        var result = authenticated(ownerSession).get("/categories");
+
+        assertThat(result.status()).isEqualTo(200);
+        assertThat(result.body()).contains("Categoria do Dono");
+        assertThat(result.body()).doesNotContain("Categoria de Outro");
     }
 
     @Test
@@ -204,14 +182,13 @@ class CategoryIT extends AuthenticationTestSupport {
         createUser(email, password);
         var session = login(email, password);
 
-        var categoryId = createCategory(session, "Lazer", "fun");
+        var categoryId = createCategory(session, "Lazer", false);
 
-        mockMvc.perform(get("/categories/{id}", categoryId)
-                        .cookie(session.accessTokenCookie()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(categoryId.toString()))
-                .andExpect(jsonPath("$.description").value("Lazer"))
-                .andExpect(jsonPath("$.icon").value("fun"));
+        var result = authenticated(session).get("/categories/" + categoryId);
+
+        assertThat(result.status()).isEqualTo(200);
+        assertThat(result.body()).contains("\"id\":\"" + categoryId + "\"");
+        assertThat(result.body()).contains("\"description\":\"Lazer\"");
     }
 
     @Test
@@ -224,11 +201,11 @@ class CategoryIT extends AuthenticationTestSupport {
         var ownerSession = login(ownerEmail, password);
         var otherSession = login(otherEmail, password);
 
-        var categoryId = createCategory(ownerSession, "Categoria Privada", "lock");
+        var categoryId = createCategory(ownerSession, "Categoria Privada", false);
 
-        mockMvc.perform(get("/categories/{id}", categoryId)
-                        .cookie(otherSession.accessTokenCookie()))
-                .andExpect(status().isNotFound());
+        var result = authenticated(otherSession).get("/categories/" + categoryId);
+
+        assertThat(result.status()).isEqualTo(404);
     }
 
     @Test
@@ -238,9 +215,9 @@ class CategoryIT extends AuthenticationTestSupport {
         createUser(email, password);
         var session = login(email, password);
 
-        mockMvc.perform(get("/categories/{id}", UUID.randomUUID())
-                        .cookie(session.accessTokenCookie()))
-                .andExpect(status().isNotFound());
+        var result = authenticated(session).get("/categories/" + UUID.randomUUID());
+
+        assertThat(result.status()).isEqualTo(404);
     }
 
     @Test
@@ -250,21 +227,18 @@ class CategoryIT extends AuthenticationTestSupport {
         createUser(email, password);
         var session = login(email, password);
 
-        var categoryId = createCategory(session, "Nome Antigo", "old");
+        var categoryId = createCategory(session, "Nome Antigo", false);
 
-        mockMvc.perform(put("/categories/{id}", categoryId)
-                        .cookie(session.accessTokenCookie())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "description": "Nome Novo",
-                                  "icon": "new"
-                                }
-                                """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(categoryId.toString()))
-                .andExpect(jsonPath("$.description").value("Nome Novo"))
-                .andExpect(jsonPath("$.icon").value("new"));
+        var result = authenticated(session).put("/categories/" + categoryId, """
+                {
+                  "description": "Nome Novo",
+                  "icon": "new"
+                }
+                """);
+
+        assertThat(result.status()).isEqualTo(200);
+        assertThat(result.body()).contains("\"description\":\"Nome Novo\"");
+        assertThat(result.body()).contains("\"icon\":\"new\"");
     }
 
     @Test
@@ -277,17 +251,15 @@ class CategoryIT extends AuthenticationTestSupport {
         var ownerSession = login(ownerEmail, password);
         var otherSession = login(otherEmail, password);
 
-        var categoryId = createCategory(ownerSession, "Categoria do Dono", "lock");
+        var categoryId = createCategory(ownerSession, "Categoria do Dono", false);
 
-        mockMvc.perform(put("/categories/{id}", categoryId)
-                        .cookie(otherSession.accessTokenCookie())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "description": "Tentativa"
-                                }
-                                """))
-                .andExpect(status().isNotFound());
+        var result = authenticated(otherSession).put("/categories/" + categoryId, """
+                {
+                  "description": "Tentativa"
+                }
+                """);
+
+        assertThat(result.status()).isEqualTo(404);
     }
 
     @Test
@@ -297,19 +269,17 @@ class CategoryIT extends AuthenticationTestSupport {
         createUser(email, password);
         var session = login(email, password);
 
-        createCategory(session, "Primeira", "one");
-        var categoryId = createCategory(session, "Segunda", "two");
+        createCategory(session, "Primeira", false);
+        var categoryId = createCategory(session, "Segunda", false);
 
-        mockMvc.perform(put("/categories/{id}", categoryId)
-                        .cookie(session.accessTokenCookie())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "description": "Primeira"
-                                }
-                                """))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors[0]").value("Você já possui uma categoria com essa descrição"));
+        var result = authenticated(session).put("/categories/" + categoryId, """
+                {
+                  "description": "Primeira"
+                }
+                """);
+
+        assertThat(result.status()).isEqualTo(400);
+        assertThat(result.body()).contains("Você já possui uma categoria com essa descrição");
     }
 
     @Test
@@ -319,18 +289,16 @@ class CategoryIT extends AuthenticationTestSupport {
         createUser(email, password);
         var session = login(email, password);
 
-        var categoryId = createCategory(session, "Válida", "ok");
+        var categoryId = createCategory(session, "Válida", false);
 
-        mockMvc.perform(put("/categories/{id}", categoryId)
-                        .cookie(session.accessTokenCookie())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "description": "Ab"
-                                }
-                                """))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors[0]").value("Descrição da categoria deve ter entre 3 e 100 caracteres"));
+        var result = authenticated(session).put("/categories/" + categoryId, """
+                {
+                  "description": "Ab"
+                }
+                """);
+
+        assertThat(result.status()).isEqualTo(400);
+        assertThat(result.body()).contains("Descrição da categoria deve ter entre 3 e 100 caracteres");
     }
 
     @Test
@@ -340,15 +308,14 @@ class CategoryIT extends AuthenticationTestSupport {
         createUser(email, password);
         var session = login(email, password);
 
-        var categoryId = createCategory(session, "Categoria para Deletar", "trash");
+        var categoryId = createCategory(session, "Categoria para Deletar", false);
 
-        mockMvc.perform(delete("/categories/{id}", categoryId)
-                        .cookie(session.accessTokenCookie()))
-                .andExpect(status().isNoContent());
+        var result = authenticated(session).delete("/categories/" + categoryId);
 
-        mockMvc.perform(get("/categories/{id}", categoryId)
-                        .cookie(session.accessTokenCookie()))
-                .andExpect(status().isNotFound());
+        assertThat(result.status()).isEqualTo(204);
+
+        var findResult = authenticated(session).get("/categories/" + categoryId);
+        assertThat(findResult.status()).isEqualTo(404);
     }
 
     @Test
@@ -358,19 +325,23 @@ class CategoryIT extends AuthenticationTestSupport {
         createUser(email, password);
         var session = login(email, password);
 
-        var categoryId = createCategory(session, "Categoria com Transação", "money");
+        var categoryId = createCategory(session, "Categoria com Transação", false);
         var userId = findUserIdByEmail(email);
-        var accountId = createBankAccount(userId);
+        var accountId = jdbcTemplate.queryForObject(
+                "INSERT INTO tb_bank_accounts (id, user_id, name, initial_balance, type) VALUES (uuidv7(), ?, 'Conta Teste', 0, 'CHECKING') RETURNING id",
+                UUID.class,
+                userId
+        );
 
         jdbcTemplate.update("""
                 INSERT INTO tb_transactions (id, user_id, bank_account_id, category_id, description, value, type, status, due_date)
                 VALUES (uuidv7(), ?, ?, ?, 'Teste', 50.00, 'FLEXIBLE_EXPENSE', 'CONFIRMED', CURRENT_DATE)
                 """, userId, accountId, categoryId);
 
-        mockMvc.perform(delete("/categories/{id}", categoryId)
-                        .cookie(session.accessTokenCookie()))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.errors[0]").value("Categoria possui transações vinculadas"));
+        var result = authenticated(session).delete("/categories/" + categoryId);
+
+        assertThat(result.status()).isEqualTo(409);
+        assertThat(result.body()).contains("Categoria possui transações vinculadas");
     }
 
     @Test
@@ -383,51 +354,17 @@ class CategoryIT extends AuthenticationTestSupport {
         var ownerSession = login(ownerEmail, password);
         var otherSession = login(otherEmail, password);
 
-        var categoryId = createCategory(ownerSession, "Categoria do Dono", "lock");
+        var categoryId = createCategory(ownerSession, "Categoria do Dono", false);
 
-        mockMvc.perform(delete("/categories/{id}", categoryId)
-                        .cookie(otherSession.accessTokenCookie()))
-                .andExpect(status().isNotFound());
+        var result = authenticated(otherSession).delete("/categories/" + categoryId);
+
+        assertThat(result.status()).isEqualTo(404);
     }
 
     @Test
-    void unauthenticatedAccessReturnsUnauthorized() throws Exception {
-        mockMvc.perform(get("/categories"))
-                .andExpect(status().isUnauthorized());
-    }
+    void unauthenticatedAccessReturnsUnauthorized() {
+        var result = restTemplate.getForEntity("/categories", String.class);
 
-    private UUID createCategory(Session session, String description, String icon) throws Exception {
-        var result = mockMvc.perform(post("/categories")
-                        .cookie(session.accessTokenCookie())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "description": "%s",
-                                  "icon": "%s"
-                                }
-                                """.formatted(description, icon)))
-                .andExpect(status().isCreated())
-                .andReturn();
-
-        var response = result.getResponse().getContentAsString();
-        var idStart = response.indexOf("\"id\":\"") + 7;
-        var idEnd = response.indexOf("\"", idStart);
-        return UUID.fromString(response.substring(idStart, idEnd));
-    }
-
-    private UUID findUserIdByEmail(String email) {
-        return jdbcTemplate.queryForObject(
-                "SELECT id FROM tb_users WHERE email = ?",
-                UUID.class,
-                email
-        );
-    }
-
-    private UUID createBankAccount(UUID userId) {
-        return jdbcTemplate.queryForObject(
-                "INSERT INTO tb_bank_accounts (id, user_id, name, initial_balance, type) VALUES (uuidv7(), ?, 'Conta Teste', 0, 'CHECKING') RETURNING id",
-                UUID.class,
-                userId
-        );
+        assertThat(result.getStatusCode().value()).isEqualTo(401);
     }
 }

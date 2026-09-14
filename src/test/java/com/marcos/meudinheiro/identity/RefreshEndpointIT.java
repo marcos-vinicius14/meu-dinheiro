@@ -1,35 +1,32 @@
 package com.marcos.meudinheiro.identity;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
-import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.http.HttpMethod;
 
+import com.marcos.meudinheiro.IntegrationTestSupport;
 import com.marcos.meudinheiro.identity.infraestructure.security.token.RefreshTokenHash;
 
-import jakarta.servlet.http.Cookie;
-
-class RefreshEndpointIT extends AuthenticationTestSupport {
+class RefreshEndpointIT extends IntegrationTestSupport {
 
     @Test
-    void validRefreshTokenCookieReturnsNewSessionCookies() throws Exception {
+    void validRefreshTokenCookieReturnsNewSessionCookies() {
         var email = "refresh-endpoint-valid@example.com";
         var password = "password123";
 
         createUser(email, password);
         var session = login(email, password);
 
-        var result = mockMvc.perform(post("/auth/refresh")
-                        .cookie(session.refreshTokenCookie()))
-                .andExpect(status().isNoContent())
-                .andReturn();
+        var response = exchangeWithCookie(session.refreshToken());
 
-        var newAccessToken = cookieValue(result, ACCESS_TOKEN_COOKIE);
-        var newRefreshToken = cookieValue(result, REFRESH_TOKEN_COOKIE);
+        assertThat(response.getStatusCode().value()).isEqualTo(204);
+
+        var setCookies = response.getHeaders().get(HttpHeaders.SET_COOKIE);
+        var newAccessToken = cookieFrom(setCookies, ACCESS_TOKEN_COOKIE);
+        var newRefreshToken = cookieFrom(setCookies, REFRESH_TOKEN_COOKIE);
 
         assertThat(newAccessToken).isNotBlank();
         assertThat(newRefreshToken).isNotEqualTo(session.refreshToken());
@@ -46,16 +43,16 @@ class RefreshEndpointIT extends AuthenticationTestSupport {
     }
 
     @Test
-    void oldRefreshTokenIsRevokedAfterRotation() throws Exception {
+    void oldRefreshTokenIsRevokedAfterRotation() {
         var email = "refresh-endpoint-rotation@example.com";
         var password = "password123";
 
         createUser(email, password);
         var session = login(email, password);
 
-        mockMvc.perform(post("/auth/refresh")
-                        .cookie(session.refreshTokenCookie()))
-                .andExpect(status().isNoContent());
+        var response = exchangeWithCookie(session.refreshToken());
+
+        assertThat(response.getStatusCode().value()).isEqualTo(204);
 
         var revokedTokens = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM tb_refresh_tokens WHERE token_hash = ? AND revoked_at IS NOT NULL",
@@ -67,46 +64,59 @@ class RefreshEndpointIT extends AuthenticationTestSupport {
     }
 
     @Test
-    void revokedRefreshTokenReturnsUnauthorizedAndClearsCookies() throws Exception {
+    void revokedRefreshTokenReturnsUnauthorizedAndClearsCookies() {
         var email = "refresh-endpoint-revoked@example.com";
         var password = "password123";
 
         createUser(email, password);
         var session = login(email, password);
 
-        mockMvc.perform(post("/auth/refresh")
-                        .cookie(session.refreshTokenCookie()))
-                .andExpect(status().isNoContent());
+        assertThat(exchangeWithCookie(session.refreshToken()).getStatusCode().value())
+                .isEqualTo(204);
 
-        var result = mockMvc.perform(post("/auth/refresh")
-                        .cookie(session.refreshTokenCookie()))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.errors").isArray())
-                .andReturn();
+        var result = exchangeWithCookie(session.refreshToken());
 
-        assertCookiesExpired(result);
+        assertThat(result.getStatusCode().value()).isEqualTo(401);
+        assertCookiesExpired(result.getHeaders().get(HttpHeaders.SET_COOKIE));
     }
 
     @Test
-    void missingRefreshTokenCookieReturnsUnauthorized() throws Exception {
-        var result = mockMvc.perform(post("/auth/refresh"))
-                .andExpect(status().isUnauthorized())
-                .andReturn();
+    void missingRefreshTokenCookieReturnsUnauthorized() {
+        var response = restTemplate.postForEntity("/auth/refresh", null, String.class);
 
-        assertCookiesExpired(result);
+        assertThat(response.getStatusCode().value()).isEqualTo(401);
+        assertCookiesExpired(response.getHeaders().get(HttpHeaders.SET_COOKIE));
     }
 
     @Test
-    void garbageRefreshTokenReturnsUnauthorized() throws Exception {
-        mockMvc.perform(post("/auth/refresh")
-                        .cookie(new Cookie(REFRESH_TOKEN_COOKIE, "garbage-token")))
-                .andExpect(status().isUnauthorized());
+    void garbageRefreshTokenReturnsUnauthorized() {
+        var response = exchangeWithCookie("garbage-token");
+
+        assertThat(response.getStatusCode().value()).isEqualTo(401);
     }
 
-    private void assertCookiesExpired(MvcResult result) {
-        var setCookies = result.getResponse()
-                .getHeaders(HttpHeaders.SET_COOKIE);
+    private org.springframework.http.ResponseEntity<String> exchangeWithCookie(String refreshToken) {
+        var headers = new HttpHeaders();
+        headers.add(HttpHeaders.COOKIE, REFRESH_TOKEN_COOKIE + "=" + refreshToken);
+        headers.add(HttpHeaders.CONTENT_TYPE, "application/json");
 
+        return restTemplate.exchange(
+                "/auth/refresh",
+                HttpMethod.POST,
+                new HttpEntity<>(headers),
+                String.class
+        );
+    }
+
+    private static String cookieFrom(java.util.List<String> setCookies, String name) {
+        return setCookies.stream()
+                .filter(header -> header.startsWith(name + "="))
+                .map(header -> header.substring((name + "=").length()).split(";", 2)[0])
+                .findFirst()
+                .orElseThrow(() -> new AssertionError(name + " cookie ausente"));
+    }
+
+    private void assertCookiesExpired(java.util.List<String> setCookies) {
         assertThat(setCookies)
                 .anyMatch(header -> header.startsWith("access_token=")
                         && header.contains("Max-Age=0"));

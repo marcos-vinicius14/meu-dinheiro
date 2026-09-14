@@ -1,21 +1,13 @@
 package com.marcos.meudinheiro.bankaccount;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.math.BigDecimal;
 import java.util.UUID;
 
-import com.marcos.meudinheiro.identity.AuthenticationTestSupport;
+import com.marcos.meudinheiro.IntegrationTestSupport;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.MediaType;
 
-class BankAccountIT extends AuthenticationTestSupport {
+class BankAccountIT extends IntegrationTestSupport {
 
     @Test
     void createBankAccountReturnsCreatedWithCurrentBalanceEqualToInitialBalance() throws Exception {
@@ -24,22 +16,19 @@ class BankAccountIT extends AuthenticationTestSupport {
         createUser(email, password);
         var session = login(email, password);
 
-        mockMvc.perform(post("/bankaccounts")
-                        .cookie(session.accessTokenCookie())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "name": "Minha Conta Corrente",
-                                  "type": "CHECKING",
-                                  "initialBalance": 1500.50
-                                }
-                                """))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").exists())
-                .andExpect(jsonPath("$.name").value("Minha Conta Corrente"))
-                .andExpect(jsonPath("$.type").value("CHECKING"))
-                .andExpect(jsonPath("$.initialBalance").value(1500.50))
-                .andExpect(jsonPath("$.currentBalance").value(1500.50));
+        var result = authenticated(session).post("/bankaccounts", """
+                {
+                  "name": "Minha Conta Corrente",
+                  "type": "CHECKING",
+                  "initialBalance": 1500.50
+                }
+                """);
+
+        assertThat(result.status()).isEqualTo(201);
+        assertThat(result.body()).contains("\"name\":\"Minha Conta Corrente\"");
+        assertThat(result.body()).contains("\"type\":\"CHECKING\"");
+        assertThat(result.body()).contains("\"initialBalance\":1500.50");
+        assertThat(result.body()).contains("\"currentBalance\":1500.50");
     }
 
     @Test
@@ -49,18 +38,16 @@ class BankAccountIT extends AuthenticationTestSupport {
         createUser(email, password);
         var session = login(email, password);
 
-        mockMvc.perform(post("/bankaccounts")
-                        .cookie(session.accessTokenCookie())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "name": "Carteira",
-                                  "type": "CASH"
-                                }
-                                """))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.initialBalance").value(0.00))
-                .andExpect(jsonPath("$.currentBalance").value(0.00));
+        var result = authenticated(session).post("/bankaccounts", """
+                {
+                  "name": "Carteira",
+                  "type": "CASH"
+                }
+                """);
+
+        assertThat(result.status()).isEqualTo(201);
+        assertThat(result.body()).contains("\"initialBalance\":0.00");
+        assertThat(result.body()).contains("\"currentBalance\":0.00");
     }
 
     @Test
@@ -70,15 +57,13 @@ class BankAccountIT extends AuthenticationTestSupport {
         createUser(email, password);
         var session = login(email, password);
 
-        mockMvc.perform(post("/bankaccounts")
-                        .cookie(session.accessTokenCookie())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "type": "CHECKING"
-                                }
-                                """))
-                .andExpect(status().isBadRequest());
+        var result = authenticated(session).post("/bankaccounts", """
+                {
+                  "type": "CHECKING"
+                }
+                """);
+
+        assertThat(result.status()).isEqualTo(400);
     }
 
     @Test
@@ -88,15 +73,13 @@ class BankAccountIT extends AuthenticationTestSupport {
         createUser(email, password);
         var session = login(email, password);
 
-        mockMvc.perform(post("/bankaccounts")
-                        .cookie(session.accessTokenCookie())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "name": "Conta Sem Tipo"
-                                }
-                                """))
-                .andExpect(status().isBadRequest());
+        var result = authenticated(session).post("/bankaccounts", """
+                {
+                  "name": "Conta Sem Tipo"
+                }
+                """);
+
+        assertThat(result.status()).isEqualTo(400);
     }
 
     @Test
@@ -106,16 +89,14 @@ class BankAccountIT extends AuthenticationTestSupport {
         createUser(email, password);
         var session = login(email, password);
 
-        mockMvc.perform(post("/bankaccounts")
-                        .cookie(session.accessTokenCookie())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "name": "Conta Inválida",
-                                  "type": "UNKNOWN"
-                                }
-                                """))
-                .andExpect(status().isBadRequest());
+        var result = authenticated(session).post("/bankaccounts", """
+                {
+                  "name": "Conta Inválida",
+                  "type": "UNKNOWN"
+                }
+                """);
+
+        assertThat(result.status()).isEqualTo(400);
     }
 
     @Test
@@ -129,17 +110,15 @@ class BankAccountIT extends AuthenticationTestSupport {
         createAccount(session, "Conta 2", "CASH", "0.00");
         createAccount(session, "Conta 3", "INVESTMENT", "0.00");
 
-        mockMvc.perform(post("/bankaccounts")
-                        .cookie(session.accessTokenCookie())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "name": "Conta 4",
-                                  "type": "CHECKING"
-                                }
-                                """))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors[0]").value("Limite de 3 contas atingido"));
+        var result = authenticated(session).post("/bankaccounts", """
+                {
+                  "name": "Conta 4",
+                  "type": "CHECKING"
+                }
+                """);
+
+        assertThat(result.status()).isEqualTo(400);
+        assertThat(result.body()).contains("Limite de 3 contas atingido");
     }
 
     @Test
@@ -155,11 +134,11 @@ class BankAccountIT extends AuthenticationTestSupport {
         createAccount(ownerSession, "Conta do Dono", "CHECKING", "100.00");
         createAccount(otherSession, "Conta de Outro", "CHECKING", "200.00");
 
-        mockMvc.perform(get("/bankaccounts")
-                        .cookie(ownerSession.accessTokenCookie()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].name").value("Conta do Dono"));
+        var result = authenticated(ownerSession).get("/bankaccounts");
+
+        assertThat(result.status()).isEqualTo(200);
+        assertThat(result.body()).contains("Conta do Dono");
+        assertThat(result.body()).doesNotContain("Conta de Outro");
     }
 
     @Test
@@ -171,11 +150,11 @@ class BankAccountIT extends AuthenticationTestSupport {
 
         var accountId = createAccount(session, "Conta para Buscar", "CHECKING", "500.00");
 
-        mockMvc.perform(get("/bankaccounts/{id}", accountId)
-                        .cookie(session.accessTokenCookie()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(accountId.toString()))
-                .andExpect(jsonPath("$.name").value("Conta para Buscar"));
+        var result = authenticated(session).get("/bankaccounts/" + accountId);
+
+        assertThat(result.status()).isEqualTo(200);
+        assertThat(result.body()).contains("\"id\":\"" + accountId + "\"");
+        assertThat(result.body()).contains("Conta para Buscar");
     }
 
     @Test
@@ -190,9 +169,9 @@ class BankAccountIT extends AuthenticationTestSupport {
 
         var accountId = createAccount(ownerSession, "Conta Privada", "CHECKING", "0.00");
 
-        mockMvc.perform(get("/bankaccounts/{id}", accountId)
-                        .cookie(otherSession.accessTokenCookie()))
-                .andExpect(status().isNotFound());
+        var result = authenticated(otherSession).get("/bankaccounts/" + accountId);
+
+        assertThat(result.status()).isEqualTo(404);
     }
 
     @Test
@@ -204,21 +183,18 @@ class BankAccountIT extends AuthenticationTestSupport {
 
         var accountId = createAccount(session, "Nome Antigo", "CHECKING", "100.00");
 
-        mockMvc.perform(put("/bankaccounts/{id}", accountId)
-                        .cookie(session.accessTokenCookie())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "name": "Nome Novo",
-                                  "initialBalance": 250.00
-                                }
-                                """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(accountId.toString()))
-                .andExpect(jsonPath("$.name").value("Nome Novo"))
-                .andExpect(jsonPath("$.initialBalance").value(250.00))
-                .andExpect(jsonPath("$.currentBalance").value(250.00))
-                .andExpect(jsonPath("$.type").value("CHECKING"));
+        var result = authenticated(session).put("/bankaccounts/" + accountId, """
+                {
+                  "name": "Nome Novo",
+                  "initialBalance": 250.00
+                }
+                """);
+
+        assertThat(result.status()).isEqualTo(200);
+        assertThat(result.body()).contains("\"name\":\"Nome Novo\"");
+        assertThat(result.body()).contains("\"initialBalance\":250.00");
+        assertThat(result.body()).contains("\"currentBalance\":250.00");
+        assertThat(result.body()).contains("\"type\":\"CHECKING\"");
     }
 
     @Test
@@ -233,16 +209,14 @@ class BankAccountIT extends AuthenticationTestSupport {
 
         var accountId = createAccount(ownerSession, "Conta do Dono", "CHECKING", "0.00");
 
-        mockMvc.perform(put("/bankaccounts/{id}", accountId)
-                        .cookie(otherSession.accessTokenCookie())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "name": "Tentativa",
-                                  "initialBalance": 100.00
-                                }
-                                """))
-                .andExpect(status().isNotFound());
+        var result = authenticated(otherSession).put("/bankaccounts/" + accountId, """
+                {
+                  "name": "Tentativa",
+                  "initialBalance": 100.00
+                }
+                """);
+
+        assertThat(result.status()).isEqualTo(404);
     }
 
     @Test
@@ -254,13 +228,12 @@ class BankAccountIT extends AuthenticationTestSupport {
 
         var accountId = createAccount(session, "Conta para Deletar", "CHECKING", "0.00");
 
-        mockMvc.perform(delete("/bankaccounts/{id}", accountId)
-                        .cookie(session.accessTokenCookie()))
-                .andExpect(status().isNoContent());
+        var result = authenticated(session).delete("/bankaccounts/" + accountId);
 
-        mockMvc.perform(get("/bankaccounts/{id}", accountId)
-                        .cookie(session.accessTokenCookie()))
-                .andExpect(status().isNotFound());
+        assertThat(result.status()).isEqualTo(204);
+
+        var findResult = authenticated(session).get("/bankaccounts/" + accountId);
+        assertThat(findResult.status()).isEqualTo(404);
     }
 
     @Test
@@ -272,17 +245,17 @@ class BankAccountIT extends AuthenticationTestSupport {
 
         var accountId = createAccount(session, "Conta com Transação", "CHECKING", "0.00");
         var userId = findUserIdByEmail(email);
-        var categoryId = createCategory(userId);
+        var categoryId = createCategoryViaSql(userId);
 
         jdbcTemplate.update("""
                 INSERT INTO tb_transactions (id, user_id, bank_account_id, category_id, description, value, type, status, due_date)
                 VALUES (uuidv7(), ?, ?, ?, 'Teste', 50.00, 'FLEXIBLE_EXPENSE', 'CONFIRMED', CURRENT_DATE)
                 """, userId, accountId, categoryId);
 
-        mockMvc.perform(delete("/bankaccounts/{id}", accountId)
-                        .cookie(session.accessTokenCookie()))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.errors[0]").value("Conta possui transações vinculadas"));
+        var result = authenticated(session).delete("/bankaccounts/" + accountId);
+
+        assertThat(result.status()).isEqualTo(409);
+        assertThat(result.body()).contains("Conta possui transações vinculadas");
     }
 
     @Test
@@ -297,50 +270,15 @@ class BankAccountIT extends AuthenticationTestSupport {
 
         var accountId = createAccount(ownerSession, "Conta do Dono", "CHECKING", "0.00");
 
-        mockMvc.perform(delete("/bankaccounts/{id}", accountId)
-                        .cookie(otherSession.accessTokenCookie()))
-                .andExpect(status().isNotFound());
+        var result = authenticated(otherSession).delete("/bankaccounts/" + accountId);
+
+        assertThat(result.status()).isEqualTo(404);
     }
 
     @Test
-    void unauthenticatedAccessReturnsUnauthorized() throws Exception {
-        mockMvc.perform(get("/bankaccounts"))
-                .andExpect(status().isUnauthorized());
-    }
+    void unauthenticatedAccessReturnsUnauthorized() {
+        var result = restTemplate.getForEntity("/bankaccounts", String.class);
 
-    private UUID createAccount(Session session, String name, String type, String initialBalance) throws Exception {
-        var result = mockMvc.perform(post("/bankaccounts")
-                        .cookie(session.accessTokenCookie())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "name": "%s",
-                                  "type": "%s",
-                                  "initialBalance": %s
-                                }
-                                """.formatted(name, type, initialBalance)))
-                .andExpect(status().isCreated())
-                .andReturn();
-
-        var response = result.getResponse().getContentAsString();
-        var idStart = response.indexOf("\"id\":\"") + 7;
-        var idEnd = response.indexOf("\"", idStart);
-        return UUID.fromString(response.substring(idStart, idEnd));
-    }
-
-    private UUID findUserIdByEmail(String email) {
-        return jdbcTemplate.queryForObject(
-                "SELECT id FROM tb_users WHERE email = ?",
-                UUID.class,
-                email
-        );
-    }
-
-    private UUID createCategory(UUID userId) {
-        return jdbcTemplate.queryForObject(
-                "INSERT INTO tb_categories (id, user_id, description, icon) VALUES (uuidv7(), ?, 'Categoria Teste', 'icon') RETURNING id",
-                UUID.class,
-                userId
-        );
+        assertThat(result.getStatusCode().value()).isEqualTo(401);
     }
 }

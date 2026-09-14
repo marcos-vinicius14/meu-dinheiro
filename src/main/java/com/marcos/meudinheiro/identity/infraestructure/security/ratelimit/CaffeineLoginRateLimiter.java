@@ -49,4 +49,9 @@ public class CaffeineLoginRateLimiter implements LoginRateLimiter {
 
         return current.count() <= maxRequests;
     }
+
+    @Override
+    public void reset() {
+        windows.invalidateAll();
+    }
 }
