@@ -13,74 +13,68 @@ import com.marcos.meudinheiro.category.infraestructure.repository.CategoryReposi
 import com.marcos.meudinheiro.shared.notification.Notification;
 import com.marcos.meudinheiro.shared.notification.OperationResult;
 import com.marcos.meudinheiro.shared.notification.ValidationResult;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.UUID;
 
 @Service
 public class CreateCategoryUseCaseImpl implements CreateCategoryUseCase {
 
-    private final CategoryRepository repository;
-    private final CategoryUserResolver userResolver;
+  private final CategoryRepository repository;
+  private final CategoryUserResolver userResolver;
 
-    public CreateCategoryUseCaseImpl(
-            CategoryRepository repository,
-            CategoryUserResolver userResolver
-    ) {
-        this.repository = repository;
-        this.userResolver = userResolver;
+  public CreateCategoryUseCaseImpl(
+      CategoryRepository repository, CategoryUserResolver userResolver) {
+    this.repository = repository;
+    this.userResolver = userResolver;
+  }
+
+  @Transactional
+  @Override
+  public OperationResult<CategoryOutput> execute(UUID userId, CreateCategoryInput input) {
+    repository.acquireCreationLock(creationLockId(userId));
+
+    var validation = validateCategory(userId, input);
+
+    if (validation.isInvalid()) {
+      return OperationResult.failure(validation.errors());
     }
 
-    @Transactional
-    @Override
-    public OperationResult<CategoryOutput> execute(UUID userId, CreateCategoryInput input) {
-        repository.acquireCreationLock(creationLockId(userId));
+    var category =
+        CategoryModel.create(
+            validation.value().description(),
+            validation.value().icon(),
+            input.isFlexible(),
+            userResolver.resolve(userId));
 
-        var validation = validateCategory(userId, input);
+    repository.save(category);
 
-        if (validation.isInvalid()) {
-            return OperationResult.failure(validation.errors());
-        }
+    return OperationResult.success(CategoryMapper.toOutput(category));
+  }
 
-        var category = CategoryModel.create(
-                validation.value().description(),
-                validation.value().icon(),
-                input.isFlexible(),
-                userResolver.resolve(userId)
-        );
+  private ValidationResult<CategoryValidation> validateCategory(
+      UUID userId, CreateCategoryInput input) {
+    var notification = new Notification();
 
-        repository.save(category);
+    var description = notification.collect(CategoryDescription.create(input.description()));
 
-        return OperationResult.success(CategoryMapper.toOutput(category));
+    var icon = notification.collect(CategoryIcon.create(input.icon()));
+
+    if (description != null
+        && repository.existsByUserIdAndDescriptionIgnoreCase(userId, description.value())) {
+      notification.collect(ValidationResult.invalid(CategoryMessages.CATEGORY_DUPLICATED));
     }
 
-    private ValidationResult<CategoryValidation> validateCategory(UUID userId, CreateCategoryInput input) {
-        var notification = new Notification();
-
-        var description = notification.collect(
-                CategoryDescription.create(input.description())
-        );
-
-        var icon = notification.collect(
-                CategoryIcon.create(input.icon())
-        );
-
-        if (description != null && repository.existsByUserIdAndDescriptionIgnoreCase(userId, description.value())) {
-            notification.collect(ValidationResult.invalid(CategoryMessages.CATEGORY_DUPLICATED));
-        }
-
-        if (notification.hasErrors()) {
-            return ValidationResult.invalid(notification.errors());
-        }
-
-        return ValidationResult.valid(new CategoryValidation(description, icon));
+    if (notification.hasErrors()) {
+      return ValidationResult.invalid(notification.errors());
     }
 
-    private static long creationLockId(UUID userId) {
-        return userId.getMostSignificantBits() ^ userId.getLeastSignificantBits();
-    }
+    return ValidationResult.valid(new CategoryValidation(description, icon));
+  }
 
-    private record CategoryValidation(CategoryDescription description, CategoryIcon icon) {
-    }
+  private static long creationLockId(UUID userId) {
+    return userId.getMostSignificantBits() ^ userId.getLeastSignificantBits();
+  }
+
+  private record CategoryValidation(CategoryDescription description, CategoryIcon icon) {}
 }

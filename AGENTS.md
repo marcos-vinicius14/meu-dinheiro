@@ -8,11 +8,15 @@ Requer **JDK 25** — o default do shell é 21 e falha com `release version 25 n
 JAVA_HOME=~/.sdkman/candidates/java/25.0.1-graalce ./mvnw verify   # tudo: compile + unit + IT
 JAVA_HOME=~/.sdkman/candidates/java/25.0.1-graalce ./mvnw test -Dtest=RefreshTokenModelTest          # um unitário
 JAVA_HOME=~/.sdkman/candidates/java/25.0.1-graalce ./mvnw test-compile failsafe:integration-test -Dit.test=LoginIT  # um IT
+JAVA_HOME=~/.sdkman/candidates/java/25.0.1-graalce ./mvnw test -Parch          # só testes de arquitetura
+JAVA_HOME=~/.sdkman/candidates/java/25.0.1-graalce ./mvnw spotless:apply       # formatar (google-java-format)
 ```
 
 - Docker obrigatório para ITs (Testcontainers). Disco cheio quebra o startup do container com timeout genérico — cheque `df -h` antes de debugar.
-- Convenção de suítes: `*Test` → surefire (sem Spring); `*IT` → failsafe (sobe contexto + Postgres).
-- Não há script lint/typecheck; verificação = `mvnw verify` compilar e passar.
+- Convenção de suítes: `*Test` → surefire (sem Spring); `*IT` → failsafe (sobe contexto + Postgres); `architecture/*Test` (ArchUnit) roda somente via profile `-Parch` — excluído do surefire default, executa como step próprio no CI.
+- **Lint/typecheck** (executam falhando o build): Spotless (`validate`, GJF 1.35.0 — `spotless:apply` corrige), Error Prone e NullAway ERROR no `compile` do código main. NullAway roda somente em main (OFF no testCompile); classes `@Entity` e campos `@PersistenceContext` excluídos. Nullabilidade via JSpecify (`org.jspecify.annotations.Nullable`).
+- **Error Prone precisa do `--add-exports/opens` de `jdk.compiler`** — aplicado via `.mvn/jvm.config` (afeta todo `mvnw`); IDEs podem exigir config equivalente.
+- Não há script lint/typecheck; verificação = `mvnw verify` compilar, lint, testes e IT passando (Spotless roda no `validate`).
 
 ## Arquitetura
 

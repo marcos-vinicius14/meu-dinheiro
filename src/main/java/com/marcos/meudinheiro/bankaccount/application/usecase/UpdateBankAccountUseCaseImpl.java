@@ -11,45 +11,47 @@ import com.marcos.meudinheiro.bankaccount.infraestructure.repository.BankAccount
 import com.marcos.meudinheiro.shared.notification.Notification;
 import com.marcos.meudinheiro.shared.notification.OperationResult;
 import com.marcos.meudinheiro.shared.valueobjects.Money;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.UUID;
 
 @Service
 public class UpdateBankAccountUseCaseImpl implements UpdateBankAccountUseCase {
 
-    private final BankAccountRepository repository;
+  private final BankAccountRepository repository;
 
-    public UpdateBankAccountUseCaseImpl(BankAccountRepository repository) {
-        this.repository = repository;
+  public UpdateBankAccountUseCaseImpl(BankAccountRepository repository) {
+    this.repository = repository;
+  }
+
+  @Transactional
+  @Override
+  public OperationResult<BankAccountOutput> execute(
+      UUID userId, UUID accountId, UpdateBankAccountInput input) {
+    return repository
+        .findById(accountId)
+        .filter(account -> account.belongsTo(userId))
+        .map(account -> updateAccount(account, input))
+        .orElseGet(() -> OperationResult.failure(BankAccountMessages.ACCOUNT_NOT_FOUND));
+  }
+
+  private OperationResult<BankAccountOutput> updateAccount(
+      BankAccountModel account, UpdateBankAccountInput input) {
+    var notification = new Notification();
+    var name = notification.collect(BankAccountName.create(input.name()));
+
+    if (notification.hasErrors()) {
+      return OperationResult.failure(notification.errors());
     }
 
-    @Transactional
-    @Override
-    public OperationResult<BankAccountOutput> execute(UUID userId, UUID accountId, UpdateBankAccountInput input) {
-        return repository.findById(accountId)
-                .filter(account -> account.belongsTo(userId))
-                .map(account -> updateAccount(account, input))
-                .orElseGet(() -> OperationResult.failure(BankAccountMessages.ACCOUNT_NOT_FOUND));
+    account.updateName(name.value());
+
+    if (input.initialBalance() != null) {
+      account.updateInitialBalance(new Money(input.initialBalance()));
     }
 
-    private OperationResult<BankAccountOutput> updateAccount(BankAccountModel account, UpdateBankAccountInput input) {
-        var notification = new Notification();
-        var name = notification.collect(BankAccountName.create(input.name()));
+    repository.save(account);
 
-        if (notification.hasErrors()) {
-            return OperationResult.failure(notification.errors());
-        }
-
-        account.updateName(name.value());
-
-        if (input.initialBalance() != null) {
-            account.updateInitialBalance(new Money(input.initialBalance()));
-        }
-
-        repository.save(account);
-
-        return OperationResult.success(BankAccountMapper.toOutput(account));
-    }
+    return OperationResult.success(BankAccountMapper.toOutput(account));
+  }
 }

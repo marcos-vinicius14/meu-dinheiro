@@ -11,59 +11,60 @@ import com.marcos.meudinheiro.category.domain.valueobject.CategoryIcon;
 import com.marcos.meudinheiro.category.infraestructure.repository.CategoryRepository;
 import com.marcos.meudinheiro.shared.notification.Notification;
 import com.marcos.meudinheiro.shared.notification.OperationResult;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.UUID;
 
 @Service
 public class UpdateCategoryUseCaseImpl implements UpdateCategoryUseCase {
 
-    private final CategoryRepository repository;
+  private final CategoryRepository repository;
 
-    public UpdateCategoryUseCaseImpl(CategoryRepository repository) {
-        this.repository = repository;
+  public UpdateCategoryUseCaseImpl(CategoryRepository repository) {
+    this.repository = repository;
+  }
+
+  @Transactional
+  @Override
+  public OperationResult<CategoryOutput> execute(
+      UUID userId, UUID categoryId, UpdateCategoryInput input) {
+    repository.acquireCreationLock(creationLockId(userId));
+
+    return repository
+        .findById(categoryId)
+        .filter(category -> category.belongsTo(userId))
+        .map(category -> updateCategory(category, userId, input))
+        .orElseGet(() -> OperationResult.failure(CategoryMessages.CATEGORY_NOT_FOUND));
+  }
+
+  private OperationResult<CategoryOutput> updateCategory(
+      CategoryModel category, UUID userId, UpdateCategoryInput input) {
+    var notification = new Notification();
+    var description = notification.collect(CategoryDescription.create(input.description()));
+    var icon = notification.collect(CategoryIcon.create(input.icon()));
+
+    if (notification.hasErrors()) {
+      return OperationResult.failure(notification.errors());
     }
 
-    @Transactional
-    @Override
-    public OperationResult<CategoryOutput> execute(UUID userId, UUID categoryId, UpdateCategoryInput input) {
-        repository.acquireCreationLock(creationLockId(userId));
+    var newDescription = description.value();
+    var changed = !newDescription.equalsIgnoreCase(category.getDescription());
 
-        return repository.findById(categoryId)
-                .filter(category -> category.belongsTo(userId))
-                .map(category -> updateCategory(category, userId, input))
-                .orElseGet(() -> OperationResult.failure(CategoryMessages.CATEGORY_NOT_FOUND));
+    if (changed
+        && repository.existsByUserIdAndDescriptionExcludingId(
+            userId, newDescription, category.getId())) {
+      return OperationResult.failure(CategoryMessages.CATEGORY_DUPLICATED);
     }
 
-    private OperationResult<CategoryOutput> updateCategory(
-            CategoryModel category,
-            UUID userId,
-            UpdateCategoryInput input) {
-        var notification = new Notification();
-        var description = notification.collect(CategoryDescription.create(input.description()));
-        var icon = notification.collect(CategoryIcon.create(input.icon()));
+    category.updateDescription(description);
+    category.updateIcon(icon);
 
-        if (notification.hasErrors()) {
-            return OperationResult.failure(notification.errors());
-        }
+    repository.save(category);
 
-        var newDescription = description.value();
-        var changed = !newDescription.equalsIgnoreCase(category.getDescription());
+    return OperationResult.success(CategoryMapper.toOutput(category));
+  }
 
-        if (changed && repository.existsByUserIdAndDescriptionExcludingId(userId, newDescription, category.getId())) {
-            return OperationResult.failure(CategoryMessages.CATEGORY_DUPLICATED);
-        }
-
-        category.updateDescription(description);
-        category.updateIcon(icon);
-
-        repository.save(category);
-
-        return OperationResult.success(CategoryMapper.toOutput(category));
-    }
-
-    private static long creationLockId(UUID userId) {
-        return userId.getMostSignificantBits() ^ userId.getLeastSignificantBits();
-    }
+  private static long creationLockId(UUID userId) {
+    return userId.getMostSignificantBits() ^ userId.getLeastSignificantBits();
+  }
 }

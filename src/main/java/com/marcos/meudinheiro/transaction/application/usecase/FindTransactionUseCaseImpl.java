@@ -6,25 +6,25 @@ import com.marcos.meudinheiro.transaction.application.contract.constant.Transact
 import com.marcos.meudinheiro.transaction.application.contract.dto.TransactionOutput;
 import com.marcos.meudinheiro.transaction.application.mapper.TransactionMapper;
 import com.marcos.meudinheiro.transaction.infraestructure.repository.TransactionRepository;
-import org.springframework.stereotype.Service;
-
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 
 @Service
 public class FindTransactionUseCaseImpl implements FindTransactionUseCase {
 
-    private final TransactionRepository repository;
+  private final TransactionRepository repository;
 
-    public FindTransactionUseCaseImpl(TransactionRepository repository) {
-        this.repository = repository;
-    }
+  public FindTransactionUseCaseImpl(TransactionRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public OperationResult<TransactionOutput> execute(UUID userId, UUID transactionId) {
-        return repository.findById(transactionId)
-                .filter(transaction -> transaction.belongsTo(userId))
-                .map(TransactionMapper::toOutput)
-                .map(OperationResult::success)
-                .orElseGet(() -> OperationResult.failure(TransactionMessages.TRANSACTION_NOT_FOUND));
-    }
+  @Override
+  public OperationResult<TransactionOutput> execute(UUID userId, UUID transactionId) {
+    return repository
+        .findById(transactionId)
+        .filter(transaction -> transaction.belongsTo(userId))
+        .map(TransactionMapper::toOutput)
+        .map(OperationResult::success)
+        .orElseGet(() -> OperationResult.failure(TransactionMessages.TRANSACTION_NOT_FOUND));
+  }
 }

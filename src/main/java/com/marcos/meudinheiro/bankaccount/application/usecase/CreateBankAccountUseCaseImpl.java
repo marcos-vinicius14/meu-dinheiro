@@ -13,86 +13,74 @@ import com.marcos.meudinheiro.shared.notification.Notification;
 import com.marcos.meudinheiro.shared.notification.OperationResult;
 import com.marcos.meudinheiro.shared.notification.ValidationResult;
 import com.marcos.meudinheiro.shared.valueobjects.Money;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class CreateBankAccountUseCaseImpl implements CreateBankAccountUseCase {
 
-    private static final int MAX_ACCOUNTS_PER_USER = 3;
+  private static final int MAX_ACCOUNTS_PER_USER = 3;
 
-    private final BankAccountRepository repository;
-    private final BankAccountUserResolver userResolver;
+  private final BankAccountRepository repository;
+  private final BankAccountUserResolver userResolver;
 
-    public CreateBankAccountUseCaseImpl(
-            BankAccountRepository repository,
-            BankAccountUserResolver userResolver
-    ) {
-        this.repository = repository;
-        this.userResolver = userResolver;
+  public CreateBankAccountUseCaseImpl(
+      BankAccountRepository repository, BankAccountUserResolver userResolver) {
+    this.repository = repository;
+    this.userResolver = userResolver;
+  }
+
+  @Transactional
+  @Override
+  public OperationResult<BankAccountOutput> execute(UUID userId, CreateBankAccountInput input) {
+    repository.acquireCreationLock(creationLockId(userId));
+
+    var validation = validateBankAccount(userId, input);
+
+    if (validation.isInvalid()) {
+      return OperationResult.failure(validation.errors());
     }
 
-    @Transactional
-    @Override
-    public OperationResult<BankAccountOutput> execute(UUID userId, CreateBankAccountInput input) {
-        repository.acquireCreationLock(creationLockId(userId));
+    var accountName = validation.value();
 
-        var validation = validateBankAccount(userId, input);
+    var initialBalance = input.initialBalance() != null ? input.initialBalance() : BigDecimal.ZERO;
 
-        if (validation.isInvalid()) {
-            return OperationResult.failure(validation.errors());
-        }
-        
-        var accountName = validation.value();
+    var account =
+        BankAccountModel.create(
+            accountName.value(),
+            input.type(),
+            new Money(initialBalance),
+            userResolver.resolve(userId));
 
-        var initialBalance = input.initialBalance() != null
-                ? input.initialBalance()
-                : BigDecimal.ZERO;
+    repository.save(account);
 
-        var account = BankAccountModel.create(
-                accountName.value(),
-                input.type(),
-                new Money(initialBalance),
-                userResolver.resolve(userId)
-        );
+    return OperationResult.success(BankAccountMapper.toOutput(account));
+  }
 
-        repository.save(account);
+  private ValidationResult<BankAccountName> validateBankAccount(
+      UUID userId, CreateBankAccountInput input) {
+    var notification = new Notification();
 
-        return OperationResult.success(BankAccountMapper.toOutput(account));
+    var name = notification.collect(BankAccountName.create(input.name()));
+
+    if (input.type() == null) {
+      notification.collect(ValidationResult.invalid(BankAccountMessages.ACCOUNT_TYPE_REQUIRED));
     }
 
-   
-    private ValidationResult<BankAccountName> validateBankAccount(
-        UUID userId,
-        CreateBankAccountInput input
-    ) {
-        var notification = new Notification();
-
-        var name = notification.collect(
-            BankAccountName.create(input.name())
-        );
-
-        if (input.type() == null) {
-            notification.collect(ValidationResult.invalid(BankAccountMessages.ACCOUNT_TYPE_REQUIRED));
-        }
-
-        if (repository.countByUserId(userId) >= MAX_ACCOUNTS_PER_USER) {
-            notification.collect(ValidationResult.invalid(BankAccountMessages.ACCOUNT_LIMIT_REACHED));
-        }
-
-        if (notification.hasErrors()) {
-            return ValidationResult.invalid(notification.errors());
-        }
-    
-        return ValidationResult.valid(name);
-
+    if (repository.countByUserId(userId) >= MAX_ACCOUNTS_PER_USER) {
+      notification.collect(ValidationResult.invalid(BankAccountMessages.ACCOUNT_LIMIT_REACHED));
     }
 
-    private static long creationLockId(UUID userId) {
-        return userId.getMostSignificantBits() ^ userId.getLeastSignificantBits();
+    if (notification.hasErrors()) {
+      return ValidationResult.invalid(notification.errors());
     }
+
+    return ValidationResult.valid(name);
+  }
+
+  private static long creationLockId(UUID userId) {
+    return userId.getMostSignificantBits() ^ userId.getLeastSignificantBits();
+  }
 }

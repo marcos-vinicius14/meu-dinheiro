@@ -5,18 +5,19 @@ import java.util.List;
 
 public final class Notification {
 
-    private final List<String> errors = new ArrayList<>();
+  private final List<String> errors = new ArrayList<>();
 
-    public <T> T collect(ValidationResult<T> result) {
-        errors.addAll(result.errors());
-        return result.value();
-    }
+  @SuppressWarnings("NullAway")
+  public <T> T collect(ValidationResult<T> result) {
+    errors.addAll(result.errors());
+    return result.value();
+  }
 
-    public boolean hasErrors() {
-        return !errors.isEmpty();
-    }
+  public boolean hasErrors() {
+    return !errors.isEmpty();
+  }
 
-    public List<String> errors() {
-        return List.copyOf(errors);
-    }
+  public List<String> errors() {
+    return List.copyOf(errors);
+  }
 }

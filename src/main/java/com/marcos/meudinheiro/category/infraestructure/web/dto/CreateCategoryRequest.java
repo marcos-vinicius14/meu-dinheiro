@@ -6,13 +6,11 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record CreateCategoryRequest(
-                @NotBlank(message = CategoryDescription.DESCRIPTION_REQUIRED) String description,
+    @NotBlank(message = CategoryDescription.DESCRIPTION_REQUIRED) String description,
+    @Size(max = 255, message = CategoryIcon.ICON_SIZE) String icon,
+    Boolean isFlexible) {
 
-                @Size(max = 255, message = CategoryIcon.ICON_SIZE) String icon,
-
-                Boolean isFlexible) {
-
-    public boolean isFlexibleOrDefault() {
-        return isFlexible != null && isFlexible;
-    }
+  public boolean isFlexibleOrDefault() {
+    return isFlexible != null && isFlexible;
+  }
 }

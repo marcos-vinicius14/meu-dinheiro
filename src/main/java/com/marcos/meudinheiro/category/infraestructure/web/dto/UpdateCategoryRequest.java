@@ -6,10 +6,5 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record UpdateCategoryRequest(
-        @NotBlank(message = CategoryDescription.DESCRIPTION_REQUIRED)
-        String description,
-
-        @Size(max = 255, message = CategoryIcon.ICON_SIZE)
-        String icon
-) {
-}
+    @NotBlank(message = CategoryDescription.DESCRIPTION_REQUIRED) String description,
+    @Size(max = 255, message = CategoryIcon.ICON_SIZE) String icon) {}
