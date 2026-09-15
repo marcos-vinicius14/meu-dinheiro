@@ -4,103 +4,79 @@ import com.marcos.meudinheiro.bankaccount.domain.enums.BankAccountType;
 import com.marcos.meudinheiro.shared.valueobjects.Money;
 import com.marcos.meudinheiro.user.domain.model.UserModel;
 import jakarta.persistence.*;
-import org.hibernate.annotations.Generated;
-
 import java.util.Objects;
 import java.util.UUID;
+import org.hibernate.annotations.Generated;
 
 @Entity
 @Table(name = "tb_bank_accounts")
 public class BankAccountModel {
-    @Id
-    @Generated
-    @Column(
-            name = "id",
-            insertable = false,
-            updatable = false
-    )
-    private UUID id;
+  @Id
+  @Generated
+  @Column(name = "id", insertable = false, updatable = false)
+  private UUID id;
 
-    @Column(nullable = false)
-    private String name;
+  @Column(nullable = false)
+  private String name;
 
-    @Embedded
-    @AttributeOverride(
-            name = "value",
-            column = @Column(
-                    name = "initial_balance",
-                    nullable = false,
-                    precision = 19,
-                    scale = 2
-            )
-    )
-    private Money initialBalance;
+  @Embedded
+  @AttributeOverride(
+      name = "value",
+      column = @Column(name = "initial_balance", nullable = false, precision = 19, scale = 2))
+  private Money initialBalance;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "type", nullable = false)
-    private BankAccountType bankAccountType;
+  @Enumerated(EnumType.STRING)
+  @Column(name = "type", nullable = false)
+  private BankAccountType bankAccountType;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id")
-    private UserModel user;
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "user_id")
+  private UserModel user;
 
-    protected BankAccountModel() {}
+  protected BankAccountModel() {}
 
-    private BankAccountModel(
-            String name,
-            BankAccountType bankAccountType,
-            Money initialBalance,
-            UserModel user
-    ) {
-        this.name = name;
-        this.bankAccountType = bankAccountType;
-        this.initialBalance = initialBalance;
-        this.user = user;
-    }
+  private BankAccountModel(
+      String name, BankAccountType bankAccountType, Money initialBalance, UserModel user) {
+    this.name = name;
+    this.bankAccountType = bankAccountType;
+    this.initialBalance = initialBalance;
+    this.user = user;
+  }
 
-    public static BankAccountModel create(
-            String name,
-            BankAccountType bankAccountType,
-            Money initialBalance,
-            UserModel user
-    ) {
-        return new BankAccountModel(
-                name,
-                bankAccountType,
-                initialBalance,
-                user
-        );
-    }
+  public static BankAccountModel create(
+      String name, BankAccountType bankAccountType, Money initialBalance, UserModel user) {
+    return new BankAccountModel(name, bankAccountType, initialBalance, user);
+  }
 
-    public void updateName(String name) {
-        this.name = name;
-    }
+  public void updateName(String name) {
+    this.name = name;
+  }
 
-    public void updateInitialBalance(Money initialBalance) {
-        this.initialBalance = Objects.requireNonNull(initialBalance);
-    }
+  public void updateInitialBalance(Money initialBalance) {
+    this.initialBalance = Objects.requireNonNull(initialBalance);
+  }
 
-    public boolean belongsTo(UUID userId) {
-        return user != null && user.getId().equals(userId);
-    }
+  public boolean belongsTo(UUID userId) {
+    return user != null && user.getId().equals(userId);
+  }
 
-    public UUID getId() {
-        return id;
-    }
+  public UUID getId() {
+    return id;
+  }
 
-    public String getName() {
-        return name;
-    }
+  public String getName() {
+    return name;
+  }
 
-    public Money getInitialBalance() {
-        return initialBalance;
-    }
+  public Money getInitialBalance() {
+    return initialBalance;
+  }
 
-    public BankAccountType getBankAccountType() {
-        return bankAccountType;
-    }
+  public BankAccountType getBankAccountType() {
+    return bankAccountType;
+  }
 
-    public UserModel getUser() {
-        return user;
-    }
+  public UserModel getUser() {
+    return user;
+  }
 }

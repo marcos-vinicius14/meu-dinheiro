@@ -5,5 +5,5 @@ import com.marcos.meudinheiro.identity.application.contract.dto.AuthenticationOu
 import com.marcos.meudinheiro.shared.notification.OperationResult;
 
 public interface AuthenticateUserUseCase {
-    OperationResult<AuthenticationOutput> execute(AuthenticationInput authenticationInput);
+  OperationResult<AuthenticationOutput> execute(AuthenticationInput authenticationInput);
 }

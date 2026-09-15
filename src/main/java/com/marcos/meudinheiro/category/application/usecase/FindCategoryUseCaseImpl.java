@@ -6,25 +6,25 @@ import com.marcos.meudinheiro.category.application.contract.dto.CategoryOutput;
 import com.marcos.meudinheiro.category.application.mapper.CategoryMapper;
 import com.marcos.meudinheiro.category.infraestructure.repository.CategoryRepository;
 import com.marcos.meudinheiro.shared.notification.OperationResult;
-import org.springframework.stereotype.Service;
-
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 
 @Service
 public class FindCategoryUseCaseImpl implements FindCategoryUseCase {
 
-    private final CategoryRepository repository;
+  private final CategoryRepository repository;
 
-    public FindCategoryUseCaseImpl(CategoryRepository repository) {
-        this.repository = repository;
-    }
+  public FindCategoryUseCaseImpl(CategoryRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    public OperationResult<CategoryOutput> execute(UUID userId, UUID categoryId) {
-        return repository.findById(categoryId)
-                .filter(category -> category.belongsTo(userId))
-                .map(CategoryMapper::toOutput)
-                .map(OperationResult::success)
-                .orElseGet(() -> OperationResult.failure(CategoryMessages.CATEGORY_NOT_FOUND));
-    }
+  @Override
+  public OperationResult<CategoryOutput> execute(UUID userId, UUID categoryId) {
+    return repository
+        .findById(categoryId)
+        .filter(category -> category.belongsTo(userId))
+        .map(CategoryMapper::toOutput)
+        .map(OperationResult::success)
+        .orElseGet(() -> OperationResult.failure(CategoryMessages.CATEGORY_NOT_FOUND));
+  }
 }

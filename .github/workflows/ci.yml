@@ -30,6 +30,12 @@ jobs:
       - name: Build
         run: ./mvnw clean compile
 
+      - name: Lint
+        run: ./mvnw spotless:check
+
+      - name: Architecture tests
+        run: ./mvnw test -Parch
+
       - name: Unit tests
         run: ./mvnw test
 

@@ -8,13 +8,13 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class PredictiveEngineConfig {
 
-    @Bean
-    public PredictiveEngine predictiveEngine() {
-        return new PredictiveEngine();
-    }
+  @Bean
+  public PredictiveEngine predictiveEngine() {
+    return new PredictiveEngine();
+  }
 
-    @Bean
-    public WhatIfSimulator whatIfSimulator(PredictiveEngine predictiveEngine) {
-        return new WhatIfSimulator(predictiveEngine);
-    }
+  @Bean
+  public WhatIfSimulator whatIfSimulator(PredictiveEngine predictiveEngine) {
+    return new WhatIfSimulator(predictiveEngine);
+  }
 }

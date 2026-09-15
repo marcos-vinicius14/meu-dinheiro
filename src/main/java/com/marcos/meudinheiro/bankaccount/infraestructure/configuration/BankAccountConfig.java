@@ -4,18 +4,16 @@ import com.marcos.meudinheiro.bankaccount.application.contract.BankAccountUserRe
 import com.marcos.meudinheiro.user.domain.model.UserModel;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import org.springframework.stereotype.Component;
-
 import java.util.UUID;
+import org.springframework.stereotype.Component;
 
 @Component
 public class BankAccountConfig implements BankAccountUserResolver {
 
-    @PersistenceContext
-    private EntityManager entityManager;
+  @PersistenceContext private EntityManager entityManager;
 
-    @Override
-    public UserModel resolve(UUID userId) {
-        return entityManager.getReference(UserModel.class, userId);
-    }
+  @Override
+  public UserModel resolve(UUID userId) {
+    return entityManager.getReference(UserModel.class, userId);
+  }
 }

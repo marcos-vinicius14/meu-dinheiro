@@ -5,11 +5,9 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 public record CreateTransactionBundleInput(
-        String description,
-        BigDecimal totalAmount,
-        Integer totalInstallments,
-        LocalDate firstDueDate,
-        UUID categoryId,
-        UUID bankAccountId
-) {
-}
+    String description,
+    BigDecimal totalAmount,
+    Integer totalInstallments,
+    LocalDate firstDueDate,
+    UUID categoryId,
+    UUID bankAccountId) {}
