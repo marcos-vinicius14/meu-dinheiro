@@ -33,3 +33,7 @@ build/
 .vscode/
 
 .env
+bin/
+node_modules/
+dist/
+*.out

@@ -2,102 +2,84 @@
 
 ## Comandos essenciais
 
-Requer **JDK 25** — o default do shell é 21 e falha com `release version 25 not supported`:
+Monorepo Go + Vue 3.
 
 ```bash
-JAVA_HOME=~/.sdkman/candidates/java/25.0.1-graalce ./mvnw verify   # tudo: compile + unit + IT
-JAVA_HOME=~/.sdkman/candidates/java/25.0.1-graalce ./mvnw test -Dtest=RefreshTokenModelTest          # um unitário
-JAVA_HOME=~/.sdkman/candidates/java/25.0.1-graalce ./mvnw test-compile failsafe:integration-test -Dit.test=LoginIT  # um IT
-JAVA_HOME=~/.sdkman/candidates/java/25.0.1-graalce ./mvnw test -Parch          # só testes de arquitetura
-JAVA_HOME=~/.sdkman/candidates/java/25.0.1-graalce ./mvnw spotless:apply       # formatar (google-java-format)
+make test         # Executa todos os testes (apps/api e apps/bot)
+make test-api     # Testes unitários e de integração com Postgres 18 via Testcontainers
+make test-bot     # Testes do bot do Telegram
+make run-api      # Inicia a API Go localmente (porta 8080)
+make run-bot      # Inicia o Bot Telegram em Go
+make run-web      # Inicia o servidor de desenvolvimento Vue 3 / Vite (porta 3000)
+make build-all    # Compila os binários de api, bot e gera o build de produção do web
+make up           # Sobe o banco PostgreSQL 18 local via Docker Compose
+make down         # Para os containers Docker
 ```
 
-- Docker obrigatório para ITs (Testcontainers). Disco cheio quebra o startup do container com timeout genérico — cheque `df -h` antes de debugar.
-- Convenção de suítes: `*Test` → surefire (sem Spring); `*IT` → failsafe (sobe contexto + Postgres); `architecture/*Test` (ArchUnit) roda somente via profile `-Parch` — excluído do surefire default, executa como step próprio no CI.
-- **Lint/typecheck** (executam falhando o build): Spotless (`validate`, GJF 1.35.0 — `spotless:apply` corrige), Error Prone e NullAway ERROR no `compile` do código main. NullAway roda somente em main (OFF no testCompile); classes `@Entity` e campos `@PersistenceContext` excluídos. Nullabilidade via JSpecify (`org.jspecify.annotations.Nullable`).
-- **Error Prone precisa do `--add-exports/opens` de `jdk.compiler`** — aplicado via `.mvn/jvm.config` (afeta todo `mvnw`); IDEs podem exigir config equivalente.
-- Não há script lint/typecheck; verificação = `mvnw verify` compilar, lint, testes e IT passando (Spotless roda no `validate`).
+- Docker é obrigatório para rodar os testes de integração (`Testcontainers` sobe `postgres:18-alpine` automaticamente).
+- Verificação completa: `make test` e `make build-all`.
 
-## Arquitetura
+---
 
-Modular monolith hexagonal (veja `docs/roadmap.md` — v1). Módulos sob `src/main/java/com/marcos/meudinheiro/`: `identity`, `user`, `category`, `transaction`, `bankaccount`, `shared`.
+## Arquitetura: Monorepo
 
-- Layout por módulo: `application/contract` (ports + DTOs), `application/usecase`, `domain/{model,valueobject,enums}`, `infraestructure/{web,repository,security,configuration}`.
-- **Atenção ao typo**: o módulo `user` usa o pacote `infraesctructure` (com "c" extra); os demais usam `infraestructure`. Não "corrija" — imports existentes dependem disso.
-- Use cases consomem ports de outros módulos (ex.: identity usa `FindUserIdentityUseCase` do user) — a comunicação inter-módulos é via application/contract, nunca via repository alheio.
+O projeto está organizado no diretório `apps/`:
 
-## Notification pattern (obrigatório)
+- **`apps/api`**: API RESTful escrita em **Go** (idiomática e direta).
+  - Roteamento: `go-chi/chi/v5`
+  - Banco de Dados: `jackc/pgx/v5` com connection pool (`pgxpool`)
+  - Cálculos Financeiros: `shopspring/decimal` (arredondamento bancário HalfEven, precisão de 2 casas, divisão segura)
+  - Migrações: `pressly/goose/v3` com migrations SQL embutidas (`embed.FS`)
+  - Autenticação: Telegram-first (`telegram_id` único, desafio deep link, cookies de sessão JWT HTTP-only)
+  - Layout de pacotes:
+    - `cmd/api`: Ponto de entrada e graceful shutdown.
+    - `internal/auth`: Desafios de autenticação Telegram, middleware de proteção e emissão de JWT.
+    - `internal/bankaccount`: CRUD de contas com locking transacional e limite defensivo de 3 contas.
+    - `internal/category`: CRUD de categorias com locking e verificação case-insensitive de unicidade.
+    - `internal/transaction`: Transações avulsas, pacotes parcelados (imutabilidade de parcelas), check-in diário atômico e simulador what-if.
+    - `internal/transaction/engine`: Motor de cálculo determinístico de S2S (Saldo Seguro Diário) e simulador multi-ciclo de 12 meses.
+    - `internal/user`: Gestão de usuários vinculados ao Telegram com seeding automático de categorias e conta inicial.
+    - `internal/web`: Roteador HTTP, middlewares de logging/recovery, helpers JSON e tratamento de cookies.
+    - `tests/integration`: Suíte de testes ponta a ponta contra PostgreSQL 18 real via Testcontainers.
+- **`apps/bot`**: Bot para Telegram escrito em **Go** (`go-telegram-bot-api/telegram-bot-api/v5`).
+  - Processa `/start auth_<token>` para autorizar o login web em 1 clique.
+  - Provê comandos de suporte e consulta de status.
+- **`apps/web`**: Aplicação e Landing Page construída com **Vue 3** e **Vite**.
+  - Apresentação do produto (S2S diário, simulador de 12 meses).
+  - Fluxo de login 1-click com Telegram via deep link e polling automático com cookies de sessão.
+  - Prévia do painel financeiro para usuários autenticados.
 
-Exceção só para caso excepcional (infra caída, contrato de framework, bug). Violação de regra de negócio retorna `OperationResult<T>` via `shared/notification` — detalhes e exemplos em `docs/notification-pattern.md`.
+---
 
-- `ValidationResult<T>` (uma validação) → `Notification.collect()` (acumula) → `OperationResult<T>` (retorno do use case).
-- Controller decide status HTTP; use case não conhece HTTP.
-- Mensagens de erro em português; em segurança, mensagens opacas (não revele se token existe/expirou/foi revogado).
+## Autenticação Telegram-First
 
-## Optional / Maybe Type para ausência de valor
+A autenticação legada (email, senha, BCrypt, chaves RSA PEM, tokens de refresh) foi **totalmente substituída** pelo modelo nativo via Telegram:
+1. O usuário no navegador clica em "Entrar com Telegram".
+2. O front-end chama `POST /auth/telegram/challenge` e recebe um token de desafio criptográfico efêmero (TTL de 5 minutos) com deep link `tg://resolve?domain=meu_dinheiro_bot&start=auth_<token>`.
+3. O front-end inicia polling periódico em `GET /auth/telegram/poll?token=<token>`.
+4. O usuário clica no link e inicia a conversa no Telegram. O Bot processa o token e chama o endpoint interno `POST /internal/auth/authorize-challenge`.
+5. A API localiza ou cria o usuário pelo `telegram_id` e marca o desafio como autorizado.
+6. A próxima chamada de polling do navegador recebe status `authorized` e um cookie `session_token` HTTP-only seguro contendo o JWT de sessão.
+7. O usuário está autenticado e pronto para operar.
 
-Evite atribuir `null` a variáveis para representar "não encontrado". Prefira encadear `Optional` e tratar a ausência de valor no final do pipeline.
+---
 
-- Use `findById(...)` (ou métodos de repository que já retornam `Optional`) e encadene `.filter(...)`, `.map(...)` e `.orElseGet(...)`.
-- Não use `.orElse(null)` seguido de `if (obj == null)` — isso recria o mesmo problema que o `Optional` resolve.
-- Para lógicas de sucesso maiores (ex.: validação de input antes de salvar), extraia um método privado e chame dentro do `.map(...)`.
+## Diretrizes de Engenharia e Boas Práticas
 
-Exemplo:
+1. **Mensagens em Português (pt-BR)**:
+   - Erros de validação e respostas da API devem ser claras e em português (ex.: `"categoria não encontrada"`, `"limite máximo de 3 contas atingido"`, `"saldo flexível insuficiente"`).
+2. **Precisão Financeira**:
+   - Nunca use float para valores monetários. Use sempre `decimal.Decimal` com scale 2 e arredondamento `RoundBank` (HalfEven).
+3. **Locking e Concorrência**:
+   - Modificações em listas com limites de quantidade (contas) e regras de unicidade sob alto paralelismo usam `pg_advisory_xact_lock` no PostgreSQL para garantir consistência absoluta sem deadlock.
+4. **Testes (Troféu de Testes)**:
+   - Testes unitários para lógica pura e invariantes matemáticas (`money_test.go`, `date_interval_test.go`, `predictive_engine_test.go`, `what_if_simulator_test.go`).
+   - Testes de integração para todos os endpoints REST contra banco PostgreSQL 18 real com Testcontainers. Proibido usar mocks de banco.
 
-```java
-return repository.findById(accountId)
-        .filter(account -> account.belongsTo(userId))
-        .map(BankAccountMapper::toOutput)
-        .map(OperationResult::success)
-        .orElseGet(() -> OperationResult.failure("Conta não encontrada"));
-```
-
-```java
-return repository.findById(accountId)
-        .filter(account -> account.belongsTo(userId))
-        .map(account -> updateAccount(account, input))
-        .orElseGet(() -> OperationResult.failure("Conta não encontrada"));
-```
-
-## Armadilhas verificadas (custaram debugging)
-
-- **`final class` + `@Transactional` não funciona**: CGLIB não cria proxy → `AopConfigException` no boot. Use cases transacionais são `public class` não-final.
-- **Testcontainers**: `AbstractIntegrationTest` usa **singleton container** (start manual no static initializer, SEM `@Testcontainers`/`@Container`). Re-adicionar as anotações para o container entre classes e mata o contexto cacheado (classes seguintes falham com 500/timeout).
-- **`.class` obsoleto em `target/`**: delete de fonte após edição sem clean pode deixar classe velha em `target/classes` → `ConflictingBeanDefinitionException` no boot. Se der conflito de bean duplicado, `rm -rf target/classes` antes de investigar o código.
-- **Cache Caffeine compartilhado em ITs**: o lockout do login (`CaffeineLoginAttemptLimiter`) é um bean singleton compartilhado por contexto — testes de lockout precisam de emails únicos E `@TestPropertySource` (contexto novo) para `max-attempts` baixo; não use o mesmo email em testes de lockout e de login normal. O mesmo vale para o rate limit por IP (`LoginRateLimitFilter`): `AbstractIntegrationTest` desabilita via `max-requests=1000`, e cada teste de `LoginEndpointRateLimitIT` usa IP fonte próprio (via `request.setRemoteAddr`) para não interferir entre métodos.
-- **Jackson 3 (Boot 4)**: ObjectMapper é `tools.jackson.databind.ObjectMapper` — `com.fasterxml.jackson.databind` não existe no classpath.
-- **Chaves RSA**: app não boota sem `classpath:keys/*.pem`. As de teste estão em `src/test/resources/keys/`; as de runtime (`src/main/resources/keys/`) **não estão commitadas** — gere localmente para rodar a app fora de teste.
-- **Spring Boot 4.x**: nomes de artefatos mudaram (`spring-boot-starter-webmvc`, `org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc`) e o parent NÃO gerencia `org.testcontainers:junit-jupiter`/`:postgresql` (Testcontainers 2.x usa `testcontainers-junit-jupiter`, `testcontainers-postgresql`).
-- **Banco**: `ddl-auto: validate` — Flyway (`src/main/resources/db/migration`) é a fonte de verdade; entidade nova sem migration falha no boot.
-- **`revoke`/`delete` não são verbos deriváveis do Spring Data**: bulk update/delete em repository precisa `@Modifying @Query` (JPQL) — ver `RefreshTokenRepository`.
-
-## Testes (estratégia: Testing Trophy)
-
-Referência completa em `docs/testing-strategy.md`. Resumo operacional:
-
-- Corpo principal são ITs: `@SpringBootTest` + `@AutoConfigureMockMvc` + Postgres real. Mock só para dependências não-determinísticas; preferir manipular estado real (ex.: UPDATE no `expires_at` para simular expiração).
-- Estenda `AbstractIntegrationTest` (módulo identity: `AuthenticationTestSupport`, com helpers `createUser`/`login`/`Session`/`jdbcTemplate`).
-- ITs compartilham banco e contexto: cada teste cria dados próprios com **emails únicos**; sem `@Transactional` de teste (commits reais validam SQL de verdade).
-
-## TDD (obrigatório para nova funcionalidade)
-
-Ciclo vermelho → verde por feature, na ordem:
-
-1. **RED**: escreva o IT primeiro, expressando o comportamento CORRETO (não o que o código hoje faz). Rode e veja falhar — a falha confirma que o teste testifica algo novo (`./mvnw test-compile failsafe:integration-test -Dit.test=XxxIT`).
-2. **GREEN**: implemente o mínimo para passar. Use case segue notification pattern (`OperationResult`); controller só mapeia HTTP.
-3. Comportamento mudou de propósito (novo contrato)? Atualize o teste antigo para o novo contrato — não contorne a feature nova no teste.
-
-Casos reais onde o vermelho pegou bug antes do código: login devolvia 500 (não 401) em credenciais inválidas; cleanup ignorava retenção (`expiresAt < now` em vez de `now - retention`); reuso de refresh não revogava a cadeia.
-
-Armadilha TDD: asserção fraca passa sem testar nada — assert só no que é garantido por design (ex.: JWTs gerados no mesmo segundo com mesmo subject são idênticos; a rotação garantida é a do refresh opaco).
-
-## Runtime local
-
-- `compose.yaml` sobe Postgres 18; credenciais via `.env` (`DATABASE_URL`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` — não commitado).
-- Cookies de auth: `access_token` path `/` (JWT, 10 min), `refresh_token` path `/auth` (opaco, hash SHA-256 no banco, TTL 15 dias, rotação a cada uso). Ao expirar cookie no logout, repita path/atributos exatos ou o browser não deleta.
-- Segurança (lockout, detecção de reuso, cleanup, decisões): ver `docs/security.md`. Reuso de refresh revogado derruba TODAS as sessões do usuário (roubo presumido).
+---
 
 ## Git / PR
 
-- Commits em português ou inglês, conventional commits (`feat(identity): ...`, `refactor: ...`).
-- Nunca commite: `.env`, `src/main/resources/keys/`, chaves de qualquer tipo.
+- **Autorização Formal Obrigatória**: É **terminantemente proibido** executar `git commit`, `git push`, criação ou merge de branches/PRs sem confirmação expressa do usuário.
+- Padrão Conventional Commits (`feat:`, `fix:`, `chore:`, `refactor:`).
+- Nunca commitar arquivos `.env` ou credenciais.
