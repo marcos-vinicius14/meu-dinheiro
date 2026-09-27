@@ -220,12 +220,12 @@ type UntrackedExpenseInput struct {
 }
 
 type DailyCheckInInput struct {
-	Date                             time.Time               `json:"date"`
-	LiquidBalance                    money.Money             `json:"liquid_balance"`
-	TargetSavings                    money.Money             `json:"target_savings"`
-	FlexibleBudgetCap                money.Money             `json:"flexible_budget_cap"`
-	UntrackedExpenses                []UntrackedExpenseInput `json:"untracked_expenses"`
-	ConfirmedPendingTransactionIDs   []uuid.UUID             `json:"confirmed_pending_transaction_ids"`
+	Date                           time.Time               `json:"date"`
+	LiquidBalance                  money.Money             `json:"liquid_balance"`
+	TargetSavings                  money.Money             `json:"target_savings"`
+	FlexibleBudgetCap              money.Money             `json:"flexible_budget_cap"`
+	UntrackedExpenses              []UntrackedExpenseInput `json:"untracked_expenses"`
+	ConfirmedPendingTransactionIDs []uuid.UUID             `json:"confirmed_pending_transaction_ids"`
 }
 
 type DailyCheckInResult struct {

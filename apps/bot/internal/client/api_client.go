@@ -11,14 +11,14 @@ import (
 )
 
 type APIClient struct {
-	baseURL    string
+	baseURL     string
 	internalKey string
-	httpClient *http.Client
+	httpClient  *http.Client
 }
 
 func NewAPIClient(baseURL, internalKey string) *APIClient {
 	return &APIClient{
-		baseURL:    baseURL,
+		baseURL:     baseURL,
 		internalKey: internalKey,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,

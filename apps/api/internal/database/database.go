@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/migrations"
 	"github.com/pressly/goose/v3"
 )
