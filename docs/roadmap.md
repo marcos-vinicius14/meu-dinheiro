@@ -16,6 +16,7 @@
 
 ```mermaid
 graph TD
+    M0["Milestone 0: Criação & Configuração do Bot (✅ Concluído)"] --> M1
     subgraph V001 ["🚀 Versão 0.0.1 (MVP - Core Loop)"]
         M1["Milestone 1: Backend de Investimentos & APIs do Bot (API)"] --> M2["Milestone 2: Onboarding Conversacional no Telegram (Bot)"]
         M2 --> M3["Milestone 3: Comandos do Motor Preditivo & S2S no Chat (Bot)"]
@@ -28,6 +29,30 @@ graph TD
 ---
 
 ## 📍 Detalhamento dos Milestones
+
+### ✅ Milestone 0: Criação & Configuração Oficial do Bot no Telegram
+**Foco:** Provisionamento do Bot no ecossistema do Telegram, definição de credenciais, comandos nativos e arquitetura de recepção de mensagens.
+
+- [x] **Provisionamento no @BotFather**:
+  - [x] Criar o bot oficial via comando `/newbot` no `@BotFather` (`Julius` / `@meudinheiro_app_bot`).
+  - [x] Definir descrição do bot (`/setdescription`) e bio (`/setabouttext`).
+  - [x] Obter o token de API (`TELEGRAM_BOT_TOKEN`) e adicioná-lo com segurança ao `.env`.
+- [x] **Configuração de Comandos no Telegram (`/setcommands`)**:
+  - [x] Registrar a lista de comandos no menu nativo do Telegram para auto-completar:
+    ```text
+    s2s - Consultar seu Saldo Seguro Diário e saúde do ciclo
+    gasto - Registrar uma despesa rápida (ex: /gasto 45 Almoço)
+    simular - Projetar compra parcelada em até 12 ciclos futuros
+    investimento - Adicionar ativo à carteira (ex: /investimento ALUP11, 10 un a 42.23)
+    investimentos - Visualizar patrimônio e carteira de ações
+    checkin - Fazer o check-in diário e conciliação de saldo
+    ajuda - Instruções e lista de comandos
+    ```
+- [x] **Arquitetura de Comunicação (Long Polling vs. Webhook)**:
+  - [x] Suporte nativo a **Long Polling** para desenvolvimento local sem necessidade de túnel ou IP público.
+  - [x] Suporte a **Webhook** HTTPS com validação estrita de secret token (`X-Telegram-Bot-Api-Secret-Token`) e endpoint de healthcheck (`/health`) para deploy em produção no Coolify.
+
+---
 
 ### 🟢 Milestone 1: Backend de Investimentos & APIs para o Bot `[v0.0.1]`
 **Foco:** Preparar o modelo de dados e endpoints internos na `apps/api` para suportar patrimônio em ações e a operação direta do Bot via `telegram_id`.
@@ -156,6 +181,7 @@ graph TD
 
 | Versão Alvo | Milestone | Escopo Principal | Entrega | Status |
 |---|---|---|---|---|
+| **`v0.0.1`** | **M0** | Criação, Token, Comandos e Webhook do Bot | Telegram / `apps/bot` | ✅ Concluído |
 | **`v0.0.1`** *(MVP Core Loop)* | **M1** | Backend de Investimentos & APIs Bot | `apps/api` | 🔄 A Iniciar |
 | **`v0.0.1`** *(MVP Core Loop)* | **M2** | Onboarding Conversacional & Saldo Inicial | `apps/bot` | ⏳ Planejado |
 | **`v0.0.1`** *(MVP Core Loop)* | **M3** | Comandos S2S, /gasto e Simulador What-If | `apps/bot` | ⏳ Planejado |
