@@ -1,6 +1,6 @@
 # Roadmap do Produto — Meu Dinheiro
 
-> **Visão do Produto:** Sistema de inteligência financeira pessoal focado em **previsibilidade futura e fluxo de caixa contínuo**. O diferencial não é olhar para o passado ou classificar despesas de forma passiva, mas sim projetar o fluxo futuro através do **Saldo Seguro Diário (S2S)**, simulações de impacto de compras em até 12 ciclos (*what-if*) e acompanhamento de patrimônio e investimentos.
+> **Visão do Produto:** Sistema de inteligência financeira pessoal focado em **previsibilidade futura**. O diferencial não é olhar para o passado ou categorizar gastos passivos, mas sim projetar o fluxo futuro através do **Saldo Seguro Diário (S2S)**, simulações de impacto de compras em até 12 ciclos (*what-if*) e acompanhamento de patrimônio e investimentos.
 >
 > **Estratégia de Lançamento:** O **Bot do Telegram** é a interface primária e prioritária de operação diária (onde o usuário vive e toma decisões de compra). O **Dashboard Web** virá em seguida para relatórios aprofundados e visualizações gráficas de longo prazo.
 
@@ -10,8 +10,7 @@
 
 ```mermaid
 graph TD
-    M0["Milestone 0: Criação & Configuração do Bot no Telegram"] --> M1["Milestone 1: Backend de Investimentos & APIs do Bot (API)"]
-    M1 --> M2["Milestone 2: Onboarding Conversacional no Telegram (Bot)"]
+    M1["Milestone 1: Backend de Investimentos & APIs do Bot (API)"] --> M2["Milestone 2: Onboarding Conversacional no Telegram (Bot)"]
     M2 --> M3["Milestone 3: Comandos do Motor Preditivo & S2S no Chat (Bot)"]
     M3 --> M4["Milestone 4: Gestão de Ativos e Carteira de Ações (Bot)"]
     M4 --> M5["Milestone 5: Notificações Proativas & Alertas de Risco (Bot/Worker)"]
@@ -21,31 +20,6 @@ graph TD
 ---
 
 ## 📍 Detalhamento dos Milestones
-
-### 🟢 Milestone 0: Criação & Configuração Oficial do Bot no Telegram
-**Foco:** Provisionamento do Bot no ecossistema do Telegram, definição de credenciais, comandos nativos e arquitetura de recepção de mensagens.
-
-- [ ] **Provisionamento no @BotFather**:
-  - Criar o bot oficial via comando `/newbot` no `@BotFather`.
-  - Definir nome de exibição (ex.: `Meu Dinheiro - Assistente Financeiro`) e username oficial (ex.: `meu_dinheiro_app_bot`).
-  - Definir descrição do bot (`/setdescription`) e bio (`/setabouttext`).
-  - Obter o token de API (`TELEGRAM_BOT_TOKEN`) e adicioná-lo com segurança ao `.env`.
-- [ ] **Configuração de Comandos no Telegram (`/setcommands`)**:
-  - Registrar a lista de comandos no menu nativo do Telegram para auto-completar:
-    ```text
-    s2s - Consultar seu Saldo Seguro Diário e saúde do ciclo
-    gasto - Registrar uma despesa rápida (ex: /gasto 45 Almoço)
-    simular - Projetar compra parcelada em até 12 ciclos futuros
-    investimento - Adicionar ativo à carteira (ex: /investimento ALUP11, 10 un a 42.23)
-    investimentos - Visualizar patrimônio e carteira de ações
-    checkin - Fazer o check-in diário e conciliação de saldo
-    ajuda - Instruções e lista de comandos
-    ```
-- [ ] **Arquitetura de Comunicação (Long Polling vs. Webhook)**:
-  - Manter suporte nativo a **Long Polling** para desenvolvimento local simplificado (sem necessidade de túnel ou IP público).
-  - Estruturar suporte alternativo a **Webhook** HTTPS com validação de secret token para deploys de produção com alta carga.
-
----
 
 ### 🟢 Milestone 1: Backend de Investimentos & APIs para o Bot
 **Foco:** Preparar o modelo de dados e endpoints internos na `apps/api` para suportar patrimônio em ações e a operação direta do Bot via `telegram_id`.
@@ -72,7 +46,7 @@ graph TD
 ---
 
 ### 🟢 Milestone 2: Onboarding Conversacional no Telegram
-**Foco:** Prover a primeira experiência de uso guiada e conversacional logo após o `/start` ou autorização de login.
+**Foco:** Prover a primeira experiência de uso encantadora e guiada logo após o `/start` ou autorização de login.
 
 - [ ] **Máquina de Estados de Conversação (State Machine)**:
   - Gerenciador de estado de diálogo em memória ou banco para cada `telegram_id`:
@@ -98,7 +72,7 @@ graph TD
 ---
 
 ### 🟢 Milestone 3: Comandos do Motor Preditivo & Operação Diária
-**Foco:** Integrar todos os recursos do motor matemático diretamente no chat do Telegram.
+**Foco:** Integrar todos os superpoderes do motor matemático diretamente no chat do Telegram.
 
 - [ ] **Comando `/s2s`**:
   - Consulta o Saldo Seguro Diário em tempo real.
@@ -107,7 +81,7 @@ graph TD
   - Exemplo: `/gasto 34.90 Almoço` ou `/gasto 120 Mercado`.
   - Cria transação do tipo `EXPENSE` e retorna o impacto imediato no S2S:
     > *"Gasto de R$ 34,90 registrado em Alimentação. Seu novo S2S para hoje é **R$ 78,12**."*
-- [ ] **Comando `/simular <valor> [parcelas]`**:
+- [ ] **Comando `/simular <valor> [parcelas]` (Método do Breno)**:
   - Exemplo: `/simular 2400 12` (Compra de R$ 2.400 em 12x).
   - Executa o simulador *what-if* de 1 a 12 ciclos futuros na API.
   - Responde ao usuário com diagnóstico preditivo:
@@ -174,8 +148,7 @@ graph TD
 
 | Milestone | Escopo Principal | Entrega | Status |
 |---|---|---|---|
-| **M0** | Criação, Token, Comandos e Webhook do Bot | Telegram @BotFather | 🔄 A Iniciar |
-| **M1** | Backend de Investimentos & APIs do Bot | `apps/api` | ⏳ Planejado |
+| **M1** | Backend de Investimentos & APIs Bot | `apps/api` | 🔄 A Iniciar |
 | **M2** | Onboarding Conversacional & Saldo Inicial | `apps/bot` | ⏳ Planejado |
 | **M3** | Comandos S2S, /gasto e Simulador What-If | `apps/bot` | ⏳ Planejado |
 | **M4** | Comando `/investimento` & Carteira de Ações | `apps/bot` | ⏳ Planejado |

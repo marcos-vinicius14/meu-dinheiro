@@ -11,10 +11,10 @@ import (
 )
 
 type Bot struct {
-	api       *tgbotapi.BotAPI
-	client    *client.APIClient
-	logger    *slog.Logger
-	botName   string
+	api     *tgbotapi.BotAPI
+	client  *client.APIClient
+	logger  *slog.Logger
+	botName string
 }
 
 func NewBot(api *tgbotapi.BotAPI, client *client.APIClient, logger *slog.Logger) *Bot {
