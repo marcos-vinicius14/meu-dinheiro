@@ -8,46 +8,70 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/marcos-vinicius14/meu-dinheiro/apps/bot/internal/client"
+	"github.com/marcos-vinicius14/meu-dinheiro/apps/bot/internal/config"
 )
 
 type Bot struct {
 	api     *tgbotapi.BotAPI
 	client  *client.APIClient
 	logger  *slog.Logger
+	cfg     *config.Config
 	botName string
 }
 
-func NewBot(api *tgbotapi.BotAPI, client *client.APIClient, logger *slog.Logger) *Bot {
+func NewBot(api *tgbotapi.BotAPI, client *client.APIClient, logger *slog.Logger, cfg *config.Config) *Bot {
+	botName := ""
+	if api != nil {
+		botName = api.Self.UserName
+	}
 	return &Bot{
 		api:     api,
 		client:  client,
 		logger:  logger,
-		botName: api.Self.UserName,
+		cfg:     cfg,
+		botName: botName,
 	}
 }
 
 func (b *Bot) Start(ctx context.Context) error {
+	if b.cfg.WebhookURL != "" {
+		return b.startWebhook(ctx)
+	}
+	return b.startPolling(ctx)
+}
+
+func (b *Bot) startPolling(ctx context.Context) error {
+	// Remove qualquer webhook ativo para garantir que o Long Polling funcione sem conflitos no Telegram
+	if _, err := b.api.Request(tgbotapi.DeleteWebhookConfig{DropPendingUpdates: false}); err != nil {
+		b.logger.Warn("falha ao resetar webhook anterior para polling", "error", err)
+	}
+
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 30
 
 	updates := b.api.GetUpdatesChan(u)
-	b.logger.Info("bot iniciado com sucesso", "username", b.botName)
+	b.logger.Info("bot iniciado em modo Long Polling", "username", b.botName)
 
 	for {
 		select {
 		case <-ctx.Done():
 			b.logger.Info("encerrando polling do telegram bot")
+			b.api.StopReceivingUpdates()
 			return nil
 		case update, ok := <-updates:
 			if !ok {
 				return nil
 			}
-			if update.Message == nil {
-				continue
-			}
-			b.handleMessage(ctx, update.Message)
+			b.handleUpdate(ctx, &update)
 		}
 	}
+}
+
+func (b *Bot) handleUpdate(ctx context.Context, update *tgbotapi.Update) {
+	if update == nil || update.Message == nil {
+		return
+	}
+	b.handleMessage(ctx, update.Message)
 }
 
 func (b *Bot) handleMessage(ctx context.Context, msg *tgbotapi.Message) {
@@ -118,11 +142,14 @@ func (b *Bot) handleAuthChallenge(ctx context.Context, chatID int64, user *tgbot
 
 	successMsg := "✅ **Login autorizado com sucesso!**\n\n" +
 		"Seu acesso ao Meu Dinheiro foi liberado no navegador.\n" +
-		"Você já pode fear o Telegram e continuar na página web."
+		"Você já pode fechar o Telegram e continuar na página web."
 	b.reply(chatID, successMsg)
 }
 
 func (b *Bot) reply(chatID int64, text string) {
+	if b.api == nil {
+		return
+	}
 	msg := tgbotapi.NewMessage(chatID, text)
 	msg.ParseMode = "Markdown"
 	if _, err := b.api.Send(msg); err != nil {

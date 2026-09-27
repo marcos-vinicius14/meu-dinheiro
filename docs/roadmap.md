@@ -3,6 +3,12 @@
 > **Visão do Produto:** Sistema de inteligência financeira pessoal focado em **previsibilidade futura**. O diferencial não é olhar para o passado ou categorizar gastos passivos, mas sim projetar o fluxo futuro através do **Saldo Seguro Diário (S2S)**, simulações de impacto de compras em até 12 ciclos (*what-if*) e acompanhamento de patrimônio e investimentos.
 >
 > **Estratégia de Lançamento:** O **Bot do Telegram** é a interface primária e prioritária de operação diária (onde o usuário vive e toma decisões de compra). O **Dashboard Web** virá em seguida para relatórios aprofundados e visualizações gráficas de longo prazo.
+>
+> **Estratégia de Releases:**
+> - 🚀 **`v0.0.1` (MVP - Core Loop)**: M1 (APIs Bot) + M2 (Onboarding) + M3 (Operação Diária: `/s2s`, `/gasto`, `/simular`).
+> - 📈 **`v0.1.0` (Investimentos)**: M4 (Carteira de Ações & Preço Médio).
+> - ⏰ **`v0.2.0` (Proatividade)**: M5 (Workers Agendados & Alertas de Risco).
+> - 🌐 **`v1.0.0` (Web & Analytics)**: M6 (Dashboard Web Completo).
 
 ---
 
@@ -10,18 +16,20 @@
 
 ```mermaid
 graph TD
-    M1["Milestone 1: Backend de Investimentos & APIs do Bot (API)"] --> M2["Milestone 2: Onboarding Conversacional no Telegram (Bot)"]
-    M2 --> M3["Milestone 3: Comandos do Motor Preditivo & S2S no Chat (Bot)"]
-    M3 --> M4["Milestone 4: Gestão de Ativos e Carteira de Ações (Bot)"]
-    M4 --> M5["Milestone 5: Notificações Proativas & Alertas de Risco (Bot/Worker)"]
-    M5 --> M6["Milestone 6: Dashboard Web Completo & Gráficos 12 Ciclos (Web)"]
+    subgraph V001 ["🚀 Versão 0.0.1 (MVP - Core Loop)"]
+        M1["Milestone 1: Backend de Investimentos & APIs do Bot (API)"] --> M2["Milestone 2: Onboarding Conversacional no Telegram (Bot)"]
+        M2 --> M3["Milestone 3: Comandos do Motor Preditivo & S2S no Chat (Bot)"]
+    end
+    M3 --> M4["Milestone 4: Gestão de Ativos e Carteira de Ações (Bot) — v0.1.0"]
+    M4 --> M5["Milestone 5: Notificações Proativas & Alertas de Risco (Bot/Worker) — v0.2.0"]
+    M5 --> M6["Milestone 6: Dashboard Web Completo & Gráficos 12 Ciclos (Web) — v1.0.0"]
 ```
 
 ---
 
 ## 📍 Detalhamento dos Milestones
 
-### 🟢 Milestone 1: Backend de Investimentos & APIs para o Bot
+### 🟢 Milestone 1: Backend de Investimentos & APIs para o Bot `[v0.0.1]`
 **Foco:** Preparar o modelo de dados e endpoints internos na `apps/api` para suportar patrimônio em ações e a operação direta do Bot via `telegram_id`.
 
 - [ ] **Esquema de Banco de Dados (`tb_investments`)**:
@@ -45,7 +53,7 @@ graph TD
 
 ---
 
-### 🟢 Milestone 2: Onboarding Conversacional no Telegram
+### 🟢 Milestone 2: Onboarding Conversacional no Telegram `[v0.0.1]`
 **Foco:** Prover a primeira experiência de uso encantadora e guiada logo após o `/start` ou autorização de login.
 
 - [ ] **Máquina de Estados de Conversação (State Machine)**:
@@ -71,7 +79,7 @@ graph TD
 
 ---
 
-### 🟢 Milestone 3: Comandos do Motor Preditivo & Operação Diária
+### 🟢 Milestone 3: Comandos do Motor Preditivo & Operação Diária `[v0.0.1]`
 **Foco:** Integrar todos os superpoderes do motor matemático diretamente no chat do Telegram.
 
 - [ ] **Comando `/s2s`**:
@@ -93,7 +101,7 @@ graph TD
 
 ---
 
-### 🟢 Milestone 4: Gestão de Ativos & Carteira de Ações
+### 🟢 Milestone 4: Gestão de Ativos & Carteira de Ações `[v0.1.0]`
 **Foco:** Permitir que o usuário acompanhe e expanda sua carteira de investimentos pelo Telegram.
 
 - [ ] **Comando `/investimento <TICKER>, <QUANTIDADE> unidades a <PRECO>`**:
@@ -119,7 +127,7 @@ graph TD
 
 ---
 
-### 🟢 Milestone 5: Notificações Proativas & Alertas de Risco
+### 🟢 Milestone 5: Notificações Proativas & Alertas de Risco `[v0.2.0]`
 **Foco:** O bot deixa de ser apenas reativo e passa a ser um assistente pessoal ativo.
 
 - [ ] **Worker de Bom Dia (S2S Matinal)**:
@@ -131,7 +139,7 @@ graph TD
 
 ---
 
-### 🟢 Milestone 6: Dashboard Web Completo & Projeção Gráfica
+### 🟢 Milestone 6: Dashboard Web Completo & Projeção Gráfica `[v1.0.0]`
 **Foco:** Interface visual rica em Vue 3 para planejamento estratégico e relatórios.
 
 - [ ] **Gráfico de Projeção dos 12 Ciclos**:
@@ -146,11 +154,12 @@ graph TD
 
 ## 📋 Resumo das Fases de Entrega
 
-| Milestone | Escopo Principal | Entrega | Status |
-|---|---|---|---|
-| **M1** | Backend de Investimentos & APIs Bot | `apps/api` | 🔄 A Iniciar |
-| **M2** | Onboarding Conversacional & Saldo Inicial | `apps/bot` | ⏳ Planejado |
-| **M3** | Comandos S2S, /gasto e Simulador What-If | `apps/bot` | ⏳ Planejado |
-| **M4** | Comando `/investimento` & Carteira de Ações | `apps/bot` | ⏳ Planejado |
-| **M5** | Notificações Proativas & Worker S2S | `apps/bot` + Worker | ⏳ Planejado |
-| **M6** | Dashboard Web Completo & Gráficos 12 Meses | `apps/web` | ⏳ Futuro |
+| Versão Alvo | Milestone | Escopo Principal | Entrega | Status |
+|---|---|---|---|---|
+| **`v0.0.1`** *(MVP Core Loop)* | **M1** | Backend de Investimentos & APIs Bot | `apps/api` | 🔄 A Iniciar |
+| **`v0.0.1`** *(MVP Core Loop)* | **M2** | Onboarding Conversacional & Saldo Inicial | `apps/bot` | ⏳ Planejado |
+| **`v0.0.1`** *(MVP Core Loop)* | **M3** | Comandos S2S, /gasto e Simulador What-If | `apps/bot` | ⏳ Planejado |
+| **`v0.1.0`** | **M4** | Comando `/investimento` & Carteira de Ações | `apps/bot` | ⏳ Planejado |
+| **`v0.2.0`** | **M5** | Notificações Proativas & Worker S2S | `apps/bot` + Worker | ⏳ Planejado |
+| **`v1.0.0`** | **M6** | Dashboard Web Completo & Gráficos 12 Meses | `apps/web` | ⏳ Futuro |
+
