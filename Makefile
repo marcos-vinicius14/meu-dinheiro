@@ -1,3 +1,8 @@
+ifneq (,$(wildcard .env))
+    include .env
+    export
+endif
+
 .PHONY: test test-api test-bot run-api run-bot run-web build-all up down
 
 test: test-api test-bot
