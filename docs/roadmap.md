@@ -54,10 +54,10 @@ graph TD
 
 ---
 
-### 🟢 Milestone 1: Backend de Investimentos & APIs para o Bot `[v0.0.1]`
-**Foco:** Preparar o modelo de dados e endpoints internos na `apps/api` para suportar patrimônio em ações e a operação direta do Bot via `telegram_id`.
+### ✅ Milestone 1: Backend de Investimentos, Gastos Essenciais & APIs para o Bot `[v0.0.1]`
+**Foco:** Preparar o modelo de dados e endpoints internos na `apps/api` para suportar patrimônio em ações, ciclo personalizado, recomendação inteligente de reserva e a operação direta do Bot via `telegram_id`.
 
-- [ ] **Esquema de Banco de Dados (`tb_investments`)**:
+- [x] **Esquema de Banco de Dados (`tb_investments` e perfil em `tb_users`)**:
   - Nova tabela no PostgreSQL 18:
     - `id UUID PRIMARY KEY DEFAULT uuidv7()`
     - `user_id UUID NOT NULL REFERENCES tb_users(id) ON DELETE CASCADE`
@@ -66,15 +66,31 @@ graph TD
     - `average_price NUMERIC(15, 2) NOT NULL CHECK (average_price >= 0)`
     - `created_at` e `updated_at` TIMESTAMPTZ
     - `UNIQUE(user_id, ticker)` com suporte a compras incrementais recalculando o preço médio ponderado.
-- [ ] **Módulo `internal/investment` (Go)**:
-  - CRUD de investimentos com arredondamento `decimal.RoundBank`.
+  - Extensão da `tb_users` com colunas de perfil e metas:
+    - `target_savings NUMERIC(19, 2) NOT NULL DEFAULT 0.00`
+    - `flexible_budget_cap NUMERIC(19, 2) NOT NULL DEFAULT 0.00`
+    - `emergency_fund_target NUMERIC(19, 2) NOT NULL DEFAULT 0.00`
+    - `emergency_fund_months INTEGER NOT NULL DEFAULT 6`
+    - `cycle_start_day INTEGER NOT NULL DEFAULT 1 CHECK (cycle_start_day BETWEEN 1 AND 28)`
+- [x] **Ciclo Financeiro Dinâmico (`dateinterval.CycleOf`)**:
+  - Cálculo determinístico de ciclos mensais personalizados iniciando no dia definido pelo usuário (`cycle_start_day`, default 1).
+- [x] **Módulo `internal/investment` (Go)**:
+  - CRUD de investimentos com arredondamento `decimal.RoundBank` (HalfEven).
   - Cálculo de Preço Médio Ponderado na adição de novos lotes:
     $$\text{Novo PM} = \frac{(\text{Qtd Atual} \times \text{PM Atual}) + (\text{Qtd Nova} \times \text{Preço Novo})}{\text{Qtd Total}}$$
-- [ ] **Endpoints de Comunicação Bot ↔ API**:
-  - `POST /internal/users/onboarding`: Salva saldo inicial em conta, meta de poupança e inicialização de patrimônio.
-  - `GET /internal/users/context-by-telegram?telegram_id=...`: Retorna o contexto financeiro completo do usuário (contas, S2S atual, saúde do ciclo e investimentos) protegido por `X-Internal-Secret`.
+  - Abatimento de posição (vendas) mantendo o PM e deleção automática ao zerar.
+  - Endpoints REST autenticados para web (`/investments`).
+- [x] **Gastos Essenciais & Recomendação Inteligente de Reserva de Emergência**:
+  - Cálculo automático de custo fixo mensal somando despesas essenciais.
+  - Projeção de reserva sugerida em 6 meses (CLT) e 12 meses (PJ/autônomo).
+  - Métricas em tempo real no contexto: meses cobertos e progresso da meta.
+- [x] **Endpoints de Comunicação Bot ↔ API (Pacote `internal/botapi`)**:
+  - `POST /internal/users/onboarding`: Salva saldo inicial, ciclo, gastos essenciais, reserva 6x/12x, aporte mensal e investimentos.
+  - `GET /internal/users/context-by-telegram?telegram_id=...`: Retorna o contexto financeiro completo (contas, ciclo, S2S atual, reserva e investimentos) protegido por `X-Internal-Secret` ou `X-Internal-API-Key`.
   - `POST /internal/investments`: Registro ou incremento de ativos vinculados ao `telegram_id`.
-  - `POST /internal/transactions/quick-expense`: Lançamento direto de despesa via bot.
+  - `POST /internal/transactions/quick-expense`: Lançamento direto de despesa via bot com cálculo imediato do impacto no S2S.
+- [x] **Cliente Go no Bot (`apps/bot/internal/client`)**:
+  - Implementação de `SaveOnboarding`, `GetUserContextByTelegram`, `AddInvestment` e `QuickExpense` com testes unitários.
 
 ---
 
@@ -85,6 +101,9 @@ graph TD
   - Gerenciador de estado de diálogo em memória ou banco para cada `telegram_id`:
     - `STATE_IDLE`
     - `STATE_ONBOARDING_BALANCE`
+    - `STATE_ONBOARDING_CYCLE_DAY`
+    - `STATE_ONBOARDING_FIXED_EXPENSES`
+    - `STATE_ONBOARDING_EMERGENCY_FUND_CHOICE`
     - `STATE_ONBOARDING_SAVINGS_TARGET`
     - `STATE_ONBOARDING_HAS_INVESTMENTS`
     - `STATE_ONBOARDING_INVESTMENT_TICKER`
@@ -93,14 +112,18 @@ graph TD
 - [ ] **Fluxo Guiado de Boas-Vindas**:
   1. **Boas-vindas:** Explicação rápida do método de Saldo Seguro Diário e previsibilidade.
   2. **Pergunta 1 (Liquidez):** *"Para começar, qual o seu saldo total somando suas contas correntes hoje? (Ex: 3500.00)"*
-  3. **Pergunta 2 (Meta de Reserva):** *"Qual valor você deseja blindar como meta de poupança/reserva este mês? (Ex: 1000.00)"*
-  4. **Pergunta 3 (Investimentos):** *"Você possui dinheiro investido em ações ou outros ativos? (Sim / Não)"*
-  5. **Se "Sim":**
-     - Pergunta a tag da ação (*ticker*), quantidade e preço médio:
-       > *"Envie o ticker da ação e a quantidade. Exemplo: `ALUP11 10 unidades a 42.23` ou digite apenas a tag para fazermos passo a passo."*
-     - O bot cadastra o ativo e pergunta: *"Deseja cadastrar mais alguma ação ou finalizar?"*
-  6. **Cálculo Inicial:** O bot roda o motor preditivo e entrega o primeiro relatório:
-     > *"✅ Configuração concluída! Seu Saldo Seguro Diário (S2S) para os próximos 30 dias é **R$ 83,33/dia**. Status: **SAUDÁVEL**."*
+  3. **Pergunta 2 (Início do Ciclo):** *"Em qual dia costuma cair seu salário para reiniciarmos seu ciclo mensal? (Padrão: dia 01)"*
+  4. **Pergunta 3 (Gastos Essenciais):** *"Quanto você estima gastar por mês com despesas essenciais como moradia/aluguel, mercado e saúde? (Ex: 1500 aluguel, 800 mercado)"*
+  5. **Pergunta 4 (Reserva de Emergência):**
+     - O bot calcula na hora:
+       > *"Seu custo essencial mensal é de R$ 2.300. Para sua segurança, recomendamos montar uma Reserva de Emergência. Você prefere uma meta de **6 meses (R$ 13.800)** ou **12 meses (R$ 27.600)**?"*
+     - Botões inline de 1 clique: `[ 6 Meses (R$ 13.8k) ]` ou `[ 12 Meses (R$ 27.6k) ]`.
+     - Em seguida pergunta o aporte mensal: *"Quanto deseja guardar por mês para essa reserva? (Ex: 300.00)"*
+  6. **Pergunta 5 (Investimentos):** *"Você possui dinheiro investido em ações ou outros ativos? (Sim / Não)"*
+     - Se "Sim": cadastra ticker, quantidade e preço (ex: `ALUP11 10 unidades a 42.23`).
+  7. **Cálculo Inicial:** O bot roda o motor preditivo e entrega o primeiro relatório:
+     > *"✅ Configuração concluída! Seu Saldo Seguro Diário (S2S) para os próximos 30 dias é **R$ 78,50/dia**. Status: **SAUDÁVEL**.\n"*
+     > *"🛡️ Sua Reserva de Emergência cobre atualmente **1,5 meses** da sua meta de 6 meses."*
 
 ---
 
@@ -182,10 +205,9 @@ graph TD
 | Versão Alvo | Milestone | Escopo Principal | Entrega | Status |
 |---|---|---|---|---|
 | **`v0.0.1`** | **M0** | Criação, Token, Comandos e Webhook do Bot | Telegram / `apps/bot` | ✅ Concluído |
-| **`v0.0.1`** *(MVP Core Loop)* | **M1** | Backend de Investimentos & APIs Bot | `apps/api` | 🔄 A Iniciar |
+| **`v0.0.1`** *(MVP Core Loop)* | **M1** | Backend de Investimentos & APIs Bot | `apps/api` | ✅ Concluído |
 | **`v0.0.1`** *(MVP Core Loop)* | **M2** | Onboarding Conversacional & Saldo Inicial | `apps/bot` | ⏳ Planejado |
 | **`v0.0.1`** *(MVP Core Loop)* | **M3** | Comandos S2S, /gasto e Simulador What-If | `apps/bot` | ⏳ Planejado |
 | **`v0.1.0`** | **M4** | Comando `/investimento` & Carteira de Ações | `apps/bot` | ⏳ Planejado |
 | **`v0.2.0`** | **M5** | Notificações Proativas & Worker S2S | `apps/bot` + Worker | ⏳ Planejado |
 | **`v1.0.0`** | **M6** | Dashboard Web Completo & Gráficos 12 Meses | `apps/web` | ⏳ Futuro |
-
