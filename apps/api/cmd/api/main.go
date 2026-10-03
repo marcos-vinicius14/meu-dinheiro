@@ -13,9 +13,11 @@ import (
 
 	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/internal/auth"
 	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/internal/bankaccount"
+	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/internal/botapi"
 	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/internal/category"
 	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/internal/config"
 	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/internal/database"
+	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/internal/investment"
 	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/internal/transaction"
 	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/internal/user"
 	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/internal/web"
@@ -48,17 +50,21 @@ func main() {
 	bankAccountRepo := bankaccount.NewRepository(pool)
 	categoryRepo := category.NewRepository(pool)
 	transactionRepo := transaction.NewRepository(pool)
+	investRepo := investment.NewRepository(pool)
 
 	// 4. Inicializa Serviços
 	jwtService := auth.NewJWTService(cfg.JWTSecret)
 	authService := auth.NewService(pool, userRepo, jwtService, cfg.BotUsername)
 	transactionService := transaction.NewService(transactionRepo, categoryRepo, bankAccountRepo)
+	investService := investment.NewService(investRepo)
 
 	// 5. Inicializa Handlers
 	authHandler := auth.NewHandler(authService, cfg.InternalAPIKey)
 	bankAccountHandler := bankaccount.NewHandler(bankAccountRepo)
 	categoryHandler := category.NewHandler(categoryRepo)
 	transactionHandler := transaction.NewHandler(transactionService)
+	investHandler := investment.NewHandler(investService)
+	botAPIHandler := botapi.NewHandler(cfg.InternalAPIKey, userRepo, bankAccountRepo, categoryRepo, transactionRepo, investService)
 
 	// 6. Configura Roteamento
 	r := web.NewRouter()
@@ -74,6 +80,8 @@ func main() {
 	bankAccountHandler.RegisterRoutes(r, authMiddleware)
 	categoryHandler.RegisterRoutes(r, authMiddleware)
 	transactionHandler.RegisterRoutes(r, authMiddleware)
+	investHandler.RegisterRoutes(r, authMiddleware)
+	botAPIHandler.RegisterRoutes(r)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%s", cfg.Port),

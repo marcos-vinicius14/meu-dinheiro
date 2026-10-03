@@ -18,7 +18,11 @@ func RequireAuth(jwtService *JWTService, userRepo *user.Repository, internalAPIK
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// 1. Verifica se é chamada interna autorizada do Bot com X-Telegram-User-ID
-			if internalKey := r.Header.Get("X-Internal-API-Key"); internalKey != "" && internalKey == internalAPIKey {
+			internalKey := r.Header.Get("X-Internal-Secret")
+			if internalKey == "" {
+				internalKey = r.Header.Get("X-Internal-API-Key")
+			}
+			if internalKey != "" && internalKey == internalAPIKey {
 				if tgIDStr := r.Header.Get("X-Telegram-User-ID"); tgIDStr != "" {
 					tgID, err := strconv.ParseInt(tgIDStr, 10, 64)
 					if err == nil {

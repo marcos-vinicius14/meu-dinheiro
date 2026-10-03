@@ -13,8 +13,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/internal/auth"
 	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/internal/bankaccount"
+	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/internal/botapi"
 	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/internal/category"
 	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/internal/database"
+	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/internal/investment"
 	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/internal/transaction"
 	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/internal/user"
 	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/internal/web"
@@ -31,14 +33,17 @@ var (
 )
 
 type TestApp struct {
-	Pool            *pgxpool.Pool
-	Router          *chi.Mux
-	UserRepo        *user.Repository
-	BankAccountRepo *bankaccount.Repository
-	CategoryRepo    *category.Repository
-	TransactionRepo *transaction.Repository
-	JWTService      *auth.JWTService
-	AuthService     *auth.Service
+	Pool              *pgxpool.Pool
+	Router            *chi.Mux
+	UserRepo          *user.Repository
+	BankAccountRepo   *bankaccount.Repository
+	CategoryRepo      *category.Repository
+	TransactionRepo   *transaction.Repository
+	InvestmentRepo    *investment.Repository
+	InvestmentService *investment.Service
+	JWTService        *auth.JWTService
+	AuthService       *auth.Service
+	InternalKey       string
 }
 
 func SetupTestApp(t *testing.T) *TestApp {
@@ -71,15 +76,19 @@ func SetupTestApp(t *testing.T) *TestApp {
 	bankAccountRepo := bankaccount.NewRepository(singletonPool)
 	categoryRepo := category.NewRepository(singletonPool)
 	transactionRepo := transaction.NewRepository(singletonPool)
+	investRepo := investment.NewRepository(singletonPool)
 
 	jwtService := auth.NewJWTService(jwtSecret)
 	authService := auth.NewService(singletonPool, userRepo, jwtService, "MeuDinheiroTestBot")
 	transactionService := transaction.NewService(transactionRepo, categoryRepo, bankAccountRepo)
+	investService := investment.NewService(investRepo)
 
 	authHandler := auth.NewHandler(authService, internalAPIKey)
 	bankAccountHandler := bankaccount.NewHandler(bankAccountRepo)
 	categoryHandler := category.NewHandler(categoryRepo)
 	transactionHandler := transaction.NewHandler(transactionService)
+	investHandler := investment.NewHandler(investService)
+	botAPIHandler := botapi.NewHandler(internalAPIKey, userRepo, bankAccountRepo, categoryRepo, transactionRepo, investService)
 
 	r := web.NewRouter()
 	authMiddleware := auth.RequireAuth(jwtService, userRepo, internalAPIKey)
@@ -88,18 +97,23 @@ func SetupTestApp(t *testing.T) *TestApp {
 	bankAccountHandler.RegisterRoutes(r, authMiddleware)
 	categoryHandler.RegisterRoutes(r, authMiddleware)
 	transactionHandler.RegisterRoutes(r, authMiddleware)
+	investHandler.RegisterRoutes(r, authMiddleware)
+	botAPIHandler.RegisterRoutes(r)
 
 	singletonRouter = r
 
 	return &TestApp{
-		Pool:            singletonPool,
-		Router:          singletonRouter,
-		UserRepo:        userRepo,
-		BankAccountRepo: bankAccountRepo,
-		CategoryRepo:    categoryRepo,
-		TransactionRepo: transactionRepo,
-		JWTService:      jwtService,
-		AuthService:     authService,
+		Pool:              singletonPool,
+		Router:            singletonRouter,
+		UserRepo:          userRepo,
+		BankAccountRepo:   bankAccountRepo,
+		CategoryRepo:      categoryRepo,
+		TransactionRepo:   transactionRepo,
+		InvestmentRepo:    investRepo,
+		InvestmentService: investService,
+		JWTService:        jwtService,
+		AuthService:       authService,
+		InternalKey:       internalAPIKey,
 	}
 }
 
@@ -109,7 +123,7 @@ func (app *TestApp) CleanDatabase(t *testing.T) {
 	defer cancel()
 
 	query := `
-		TRUNCATE TABLE tb_transactions, tb_transaction_bundles, tb_check_in_snapshots,
+		TRUNCATE TABLE tb_investments, tb_transactions, tb_transaction_bundles, tb_check_in_snapshots,
 		               tb_bank_accounts, tb_categories, tb_telegram_auth_challenges, tb_users
 		RESTART IDENTITY CASCADE
 	`
