@@ -178,3 +178,88 @@ func TestInternalBotAPIFullFlow(t *testing.T) {
 	assert.Equal(t, 600.00, addInvResp.Investment.TotalCost)
 	assert.Equal(t, 1022.30, addInvResp.TotalInvested) // 422.30 (ALUP11) + 600 (BBAS3)
 }
+
+func TestInternalBotAPI_OnboardingValidationErrors(t *testing.T) {
+	app := integration.SetupTestApp(t)
+	defer app.CleanDatabase(t)
+
+	// 1. Corpo inválido (JSON quebrado)
+	invalidJSONReq := httptest.NewRequest(http.MethodPost, "/internal/users/onboarding", bytes.NewReader([]byte("{invalid-json")))
+	invalidJSONReq.Header.Set("X-Internal-Secret", app.InternalKey)
+	res := app.ExecuteRequest(invalidJSONReq)
+	assert.Equal(t, http.StatusBadRequest, res.Code)
+
+	// 2. Falta telegram_id e first_name
+	missingFieldsBody, _ := json.Marshal(map[string]any{
+		"initial_balance": 1000.00,
+	})
+	missingFieldsReq := httptest.NewRequest(http.MethodPost, "/internal/users/onboarding", bytes.NewReader(missingFieldsBody))
+	missingFieldsReq.Header.Set("X-Internal-Secret", app.InternalKey)
+	res = app.ExecuteRequest(missingFieldsReq)
+	assert.Equal(t, http.StatusBadRequest, res.Code)
+	assert.Contains(t, res.Body.String(), "telegram_id e first_name são obrigatórios")
+
+	// 3. Fallback defensivo de cycle_start_day > 28 e emergency_fund_months inválido
+	defensiveBody, _ := json.Marshal(map[string]any{
+		"telegram_id":           int64(778899),
+		"first_name":            "Defensive User",
+		"initial_balance":       3000.00,
+		"cycle_start_day":       35, // Fora do intervalo 1..28 -> deve cair para 1
+		"emergency_fund_months": 24, // Diferente de 6 e 12 -> deve cair para 6
+		"target_savings":        200.00,
+	})
+	defensiveReq := httptest.NewRequest(http.MethodPost, "/internal/users/onboarding", bytes.NewReader(defensiveBody))
+	defensiveReq.Header.Set("X-Internal-Secret", app.InternalKey)
+	res = app.ExecuteRequest(defensiveReq)
+	require.Equal(t, http.StatusOK, res.Code)
+
+	var onbResp struct {
+		EmergencyFund struct {
+			ChosenMonths int `json:"chosen_months"`
+		} `json:"emergency_fund"`
+	}
+	err := json.NewDecoder(res.Body).Decode(&onbResp)
+	require.NoError(t, err)
+	assert.Equal(t, 6, onbResp.EmergencyFund.ChosenMonths, "mês da reserva deve ter fallback para 6")
+
+	// Verifica se cycle_start_day foi salvo como 1 no banco
+	ctxReq := httptest.NewRequest(http.MethodGet, "/internal/users/context-by-telegram?telegram_id=778899", nil)
+	ctxReq.Header.Set("X-Internal-Secret", app.InternalKey)
+	ctxRes := app.ExecuteRequest(ctxReq)
+	require.Equal(t, http.StatusOK, ctxRes.Code)
+
+	var ctxResp struct {
+		User struct {
+			CycleStartDay int `json:"cycle_start_day"`
+		} `json:"user"`
+	}
+	err = json.NewDecoder(ctxRes.Body).Decode(&ctxResp)
+	require.NoError(t, err)
+	assert.Equal(t, 1, ctxResp.User.CycleStartDay, "cycle_start_day deve ter fallback defensivo para 1")
+}
+
+func TestInternalBotAPI_ContextByTelegram_NotFound(t *testing.T) {
+	app := integration.SetupTestApp(t)
+	defer app.CleanDatabase(t)
+
+	// 1. telegram_id ausente
+	emptyReq := httptest.NewRequest(http.MethodGet, "/internal/users/context-by-telegram", nil)
+	emptyReq.Header.Set("X-Internal-Secret", app.InternalKey)
+	res := app.ExecuteRequest(emptyReq)
+	assert.Equal(t, http.StatusBadRequest, res.Code)
+	assert.Contains(t, res.Body.String(), "telegram_id é obrigatório")
+
+	// 2. telegram_id inválido (não numérico)
+	invalidReq := httptest.NewRequest(http.MethodGet, "/internal/users/context-by-telegram?telegram_id=abc", nil)
+	invalidReq.Header.Set("X-Internal-Secret", app.InternalKey)
+	res = app.ExecuteRequest(invalidReq)
+	assert.Equal(t, http.StatusBadRequest, res.Code)
+	assert.Contains(t, res.Body.String(), "telegram_id inválido")
+
+	// 3. telegram_id inexistente
+	notFoundReq := httptest.NewRequest(http.MethodGet, "/internal/users/context-by-telegram?telegram_id=9999999999", nil)
+	notFoundReq.Header.Set("X-Internal-Secret", app.InternalKey)
+	res = app.ExecuteRequest(notFoundReq)
+	assert.Equal(t, http.StatusNotFound, res.Code)
+	assert.Contains(t, res.Body.String(), "Usuário não encontrado")
+}
