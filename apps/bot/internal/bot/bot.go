@@ -5,18 +5,22 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/marcos-vinicius14/meu-dinheiro/apps/bot/internal/bot/fsm"
 	"github.com/marcos-vinicius14/meu-dinheiro/apps/bot/internal/client"
 	"github.com/marcos-vinicius14/meu-dinheiro/apps/bot/internal/config"
 )
 
 type Bot struct {
-	api     *tgbotapi.BotAPI
-	client  *client.APIClient
-	logger  *slog.Logger
-	cfg     *config.Config
-	botName string
+	api          *tgbotapi.BotAPI
+	client       *client.APIClient
+	logger       *slog.Logger
+	cfg          *config.Config
+	botName      string
+	sessionStore *fsm.SessionStore
+	fsm          *fsm.FSM
 }
 
 func NewBot(api *tgbotapi.BotAPI, client *client.APIClient, logger *slog.Logger, cfg *config.Config) *Bot {
@@ -24,16 +28,31 @@ func NewBot(api *tgbotapi.BotAPI, client *client.APIClient, logger *slog.Logger,
 	if api != nil {
 		botName = api.Self.UserName
 	}
+	sessionStore := fsm.NewSessionStore(30 * time.Minute)
+	fsmEngine := fsm.NewFSM(sessionStore, api, client, logger)
+	fsmEngine.SetStepHandler(fsm.NewOnboardingHandler(client, logger))
+
 	return &Bot{
-		api:     api,
-		client:  client,
-		logger:  logger,
-		cfg:     cfg,
-		botName: botName,
+		api:          api,
+		client:       client,
+		logger:       logger,
+		cfg:          cfg,
+		botName:      botName,
+		sessionStore: sessionStore,
+		fsm:          fsmEngine,
 	}
 }
 
+func (b *Bot) FSM() *fsm.FSM {
+	return b.fsm
+}
+
+func (b *Bot) SessionStore() *fsm.SessionStore {
+	return b.sessionStore
+}
+
 func (b *Bot) Start(ctx context.Context) error {
+	go b.sessionStore.StartEvictionWorker(ctx, 5*time.Minute)
 	if b.cfg.WebhookURL != "" {
 		return b.startWebhook(ctx)
 	}
@@ -68,10 +87,21 @@ func (b *Bot) startPolling(ctx context.Context) error {
 }
 
 func (b *Bot) handleUpdate(ctx context.Context, update *tgbotapi.Update) {
-	if update == nil || update.Message == nil {
+	if update == nil {
 		return
 	}
-	b.handleMessage(ctx, update.Message)
+
+	handled, err := b.fsm.HandleUpdate(ctx, update)
+	if err != nil {
+		b.logger.Error("erro ao processar update na fsm", "error", err)
+	}
+	if handled {
+		return
+	}
+
+	if update.Message != nil {
+		b.handleMessage(ctx, update.Message)
+	}
 }
 
 func (b *Bot) handleMessage(ctx context.Context, msg *tgbotapi.Message) {

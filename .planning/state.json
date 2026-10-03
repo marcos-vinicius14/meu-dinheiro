@@ -1,0 +1,38 @@
+{
+  "contract": "1.0.0",
+  "flavor": "core",
+  "milestone": "v0.0.1",
+  "phases": [
+    {
+      "number": "1",
+      "name": "Onboarding Conversacional no Telegram",
+      "status": "pending"
+    },
+    {
+      "number": "2",
+      "name": "Comandos do Motor Preditivo & Operação Diária",
+      "status": "pending"
+    },
+    {
+      "number": "3",
+      "name": "Gestão de Carteira de Ações no Telegram",
+      "status": "pending"
+    },
+    {
+      "number": "4",
+      "name": "Notificações Proativas & Alertas de Risco",
+      "status": "pending"
+    },
+    {
+      "number": "5",
+      "name": "Dashboard Web Completo & Gráficos 12 Ciclos",
+      "status": "pending"
+    }
+  ],
+  "next": {
+    "command": "/gsd-progress --next",
+    "label": "Advance to the next step",
+    "reason": "Phase 1 of 5 · executing"
+  },
+  "updated_at": "2026-10-03T14:03:16.417Z"
+}
