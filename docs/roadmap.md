@@ -18,7 +18,7 @@
 graph TD
     M0["Milestone 0: Criação & Configuração do Bot (✅ Concluído)"] --> M1
     subgraph V001 ["🚀 Versão 0.0.1 (MVP - Core Loop)"]
-        M1["Milestone 1: Backend de Investimentos & APIs do Bot (API)"] --> M2["Milestone 2: Onboarding Conversacional no Telegram (Bot)"]
+        M1["Milestone 1: Backend de Investimentos & APIs do Bot (✅ Concluído)"] --> M2["Milestone 2: Onboarding Conversacional no Telegram (✅ Concluído)"]
         M2 --> M3["Milestone 3: Comandos do Motor Preditivo & S2S no Chat (Bot)"]
     end
     M3 --> M4["Milestone 4: Gestão de Ativos e Carteira de Ações (Bot) — v0.1.0"]
@@ -94,36 +94,37 @@ graph TD
 
 ---
 
-### 🟢 Milestone 2: Onboarding Conversacional no Telegram `[v0.0.1]`
+### ✅ Milestone 2: Onboarding Conversacional no Telegram `[v0.0.1]`
 **Foco:** Prover a primeira experiência de uso encantadora e guiada logo após o `/start` ou autorização de login.
 
-- [ ] **Máquina de Estados de Conversação (State Machine)**:
-  - Gerenciador de estado de diálogo em memória ou banco para cada `telegram_id`:
-    - `STATE_IDLE`
-    - `STATE_ONBOARDING_BALANCE`
-    - `STATE_ONBOARDING_CYCLE_DAY`
-    - `STATE_ONBOARDING_FIXED_EXPENSES`
-    - `STATE_ONBOARDING_EMERGENCY_FUND_CHOICE`
-    - `STATE_ONBOARDING_SAVINGS_TARGET`
-    - `STATE_ONBOARDING_HAS_INVESTMENTS`
-    - `STATE_ONBOARDING_INVESTMENT_TICKER`
-    - `STATE_ONBOARDING_INVESTMENT_QTY`
-    - `STATE_ONBOARDING_INVESTMENT_PRICE`
-- [ ] **Fluxo Guiado de Boas-Vindas**:
+- [x] **Máquina de Estados de Conversação (State Machine)**:
+  - Gerenciador de estado de diálogo em memória (`SessionStore` thread-safe com `sync.RWMutex` e expurgo por TTL via ticker) para cada `telegram_id`:
+    - `StateIdle`
+    - `StateWaitingBalance`
+    - `StateWaitingCycleDay`
+    - `StateWaitingFixedExpenses`
+    - `StateWaitingEmergencyFundChoice`
+    - `StateWaitingSavingsTarget`
+    - `StateWaitingInvestmentChoice`
+    - `StateWaitingInvestmentInput`
+  - Tipagem forte de callbacks via `Action` e validação estrita de estado contra replay/cliques fora de ordem.
+- [x] **Fluxo Guiado de Boas-Vindas**:
   1. **Boas-vindas:** Explicação rápida do método de Saldo Seguro Diário e previsibilidade.
   2. **Pergunta 1 (Liquidez):** *"Para começar, qual o seu saldo total somando suas contas correntes hoje? (Ex: 3500.00)"*
-  3. **Pergunta 2 (Início do Ciclo):** *"Em qual dia costuma cair seu salário para reiniciarmos seu ciclo mensal? (Padrão: dia 01)"*
+  3. **Pergunta 2 (Início do Ciclo):** *"Em qual dia costuma cair seu salário para reiniciarmos seu ciclo mensal? (Padrão: dia 01, teto defensivo: dia 28)"*
   4. **Pergunta 3 (Gastos Essenciais):** *"Quanto você estima gastar por mês com despesas essenciais como moradia/aluguel, mercado e saúde? (Ex: 1500 aluguel, 800 mercado)"*
+     - Botão inline de 1 clique: `[ ✅ Concluir Despesas Fixas ]` para fechar a soma instantaneamente.
   5. **Pergunta 4 (Reserva de Emergência):**
      - O bot calcula na hora:
-       > *"Seu custo essencial mensal é de R$ 2.300. Para sua segurança, recomendamos montar uma Reserva de Emergência. Você prefere uma meta de **6 meses (R$ 13.800)** ou **12 meses (R$ 27.600)**?"*
-     - Botões inline de 1 clique: `[ 6 Meses (R$ 13.8k) ]` ou `[ 12 Meses (R$ 27.6k) ]`.
+       > *"Seu custo essencial mensal é de R$ 2.300. Para sua segurança, recomendamos montar uma Reserva de Emergência. Você prefere uma meta de **6 meses (CLT)** ou **12 meses (PJ/Autônomo)**?"*
+     - Botões inline de 1 clique com valor calculado em reais: `[ 🎯 6 Meses (CLT) - R$ 13.800,00 ]` ou `[ 🎯 12 Meses (PJ) - R$ 27.600,00 ]`.
      - Em seguida pergunta o aporte mensal: *"Quanto deseja guardar por mês para essa reserva? (Ex: 300.00)"*
-  6. **Pergunta 5 (Investimentos):** *"Você possui dinheiro investido em ações ou outros ativos? (Sim / Não)"*
-     - Se "Sim": cadastra ticker, quantidade e preço (ex: `ALUP11 10 unidades a 42.23`).
-  7. **Cálculo Inicial:** O bot roda o motor preditivo e entrega o primeiro relatório:
-     > *"✅ Configuração concluída! Seu Saldo Seguro Diário (S2S) para os próximos 30 dias é **R$ 78,50/dia**. Status: **SAUDÁVEL**.\n"*
-     > *"🛡️ Sua Reserva de Emergência cobre atualmente **1,5 meses** da sua meta de 6 meses."*
+  6. **Pergunta 5 (Investimentos):** *"Você possui dinheiro investido em ações ou outros ativos que gostaria de cadastrar agora?"*
+     - Botões inline: `[ ➕ Adicionar Ativo ]` e `[ ⏭️ Pular Etapa ]`.
+     - Parser flexível de ticker, quantidade e preço (ex: `ALUP11 10 42.23` ou `PETR4 100 cotas a 38.50`).
+  7. **Cálculo Inicial & Painel Diário:** O bot persiste o setup na API via `SaveOnboarding`, expurga a sessão da FSM e entrega o primeiro relatório:
+     > *"🎉 Configuração Concluída com Sucesso! Seu Saldo Seguro Diário (S2S) para os próximos 30 dias é **R$ 78,50/dia**. Status: **SAUDÁVEL**."*
+  8. **Reconhecimento de Usuário Cadastrado:** Se o usuário já possuir cadastro prévio e enviar `/start`, a FSM exibe diretamente o Painel Diário com S2S de Hoje, Status de Saúde, Dias Restantes e Resumo Patrimonial.
 
 ---
 
@@ -137,7 +138,7 @@ graph TD
   - Exemplo: `/gasto 34.90 Almoço` ou `/gasto 120 Mercado`.
   - Cria transação do tipo `EXPENSE` e retorna o impacto imediato no S2S:
     > *"Gasto de R$ 34,90 registrado em Alimentação. Seu novo S2S para hoje é **R$ 78,12**."*
-- [ ] **Comando `/simular <valor> [parcelas]` (Método do Breno)**:
+- [ ] **Comando `/simular <valor> [parcelas]`**:
   - Exemplo: `/simular 2400 12` (Compra de R$ 2.400 em 12x).
   - Executa o simulador *what-if* de 1 a 12 ciclos futuros na API.
   - Responde ao usuário com diagnóstico preditivo:

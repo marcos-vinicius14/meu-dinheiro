@@ -10,7 +10,7 @@ O Meu Dinheiro transforma a gestão financeira pessoal ao substituir o registro 
 - Integer phases (1, 2, 3...): Planned milestone work
 - Decimal phases (1.1, 2.1...): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 1: Onboarding Conversacional no Telegram** - Máquina de estados conversacional, coleta de saldo inicial, ciclo, gastos essenciais, reserva 6x/12x e entrega do primeiro S2S.
+- [x] **Phase 1: Onboarding Conversacional no Telegram** - Máquina de estados conversacional, coleta de saldo inicial, ciclo, gastos essenciais, reserva 6x/12x e entrega do primeiro S2S.
 - [ ] **Phase 2: Comandos do Motor Preditivo & Operação Diária** - Implementação dos comandos `/s2s`, `/gasto`, `/simular` (what-if 12 ciclos) e `/checkin` diário no chat.
 - [ ] **Phase 3: Gestão de Carteira de Ações no Telegram (`v0.1.0`)** - Comandos `/investimento`, `/investimentos` e `/venda` com recálculo de preço médio ponderado.
 - [ ] **Phase 4: Notificações Proativas & Alertas de Risco (`v0.2.0`)** - Workers agendados de Bom Dia (S2S matinal), alerta de degradação da saúde do ciclo e lembrete de check-in.
@@ -19,6 +19,7 @@ O Meu Dinheiro transforma a gestão financeira pessoal ao substituir o registro 
 ## Phase Details
 
 ### Phase 1: Onboarding Conversacional no Telegram
+
 **Goal**: Conduzir o usuário pelo diálogo interativo de boas-vindas no Telegram para capturar liquidez inicial, dia do ciclo, despesas essenciais, escolha da reserva 6x/12x e investimentos, salvando o setup via API e entregando o primeiro relatório de S2S.
 **Mode:** mvp
 **Depends on**: Nothing (Backend M1 já concluído e disponível)
@@ -29,15 +30,20 @@ O Meu Dinheiro transforma a gestão financeira pessoal ao substituir o registro 
   3. Bot calcula o custo essencial mensal e apresenta botões inline para escolha da meta de Reserva de Emergência (6 meses CLT vs 12 meses PJ), solicitando o aporte mensal planejado.
   4. Bot permite cadastrar ativos de investimento iniciais de forma opcional.
   5. Ao finalizar, o bot envia o payload completo para `POST /internal/users/onboarding` e exibe o resumo com o Saldo Seguro Diário (S2S) e status de saúde do ciclo.
+
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: Implementar máquina de estados finitos (State Machine) e rotas de mensagens no pacote `apps/bot/internal/bot`
-- [ ] 01-02: Implementar handlers de cada etapa do diálogo, botões inline de reserva, integração com APIClient (`SaveOnboarding`) e testes unitários
+**Wave 1**
+- [x] 01-01: Implementar máquina de estados finitos (State Machine) e rotas de mensagens no pacote `apps/bot/internal/bot`
+
+**Wave 2**
+- [x] 01-02: Implementar handlers de cada etapa do diálogo, botões inline de reserva, integração com APIClient (`SaveOnboarding`) e testes unitários
 
 ---
 
 ### Phase 2: Comandos do Motor Preditivo & Operação Diária
+
 **Goal**: Disponibilizar no Telegram os comandos centrais do motor preditivo para consulta instantânea do S2S, registro rápido de despesas com recalibração imediata, simulações what-if de até 12 ciclos e conciliação diária de saldo.
 **Mode:** mvp
 **Depends on**: Phase 1
@@ -47,6 +53,7 @@ Plans:
   2. Usuário digita `/gasto 35 Almoço`, a transação é criada via `POST /internal/transactions/quick-expense` e o bot responde com o novo S2S atualizado.
   3. Usuário digita `/simular 2400 12`, a simulação what-if de 12 ciclos é executada e o bot alerta sobre eventuais impactos ou riscos de déficit futuro.
   4. Usuário executa `/checkin` e realiza a conciliação diária com snapshot salvo na base.
+
 **Plans**: 2 plans
 
 Plans:
@@ -56,6 +63,7 @@ Plans:
 ---
 
 ### Phase 3: Gestão de Carteira de Ações no Telegram (`v0.1.0`)
+
 **Goal**: Permitir ao investidor gerenciar sua carteira de ativos diretamente pelo chat, atualizando preços médios ponderados e acompanhando o patrimônio total.
 **Mode:** mvp
 **Depends on**: Phase 2
@@ -64,6 +72,7 @@ Plans:
   1. Usuário digita `/investimento ALUP11, 10 un a 42.23`, adiciona o ativo e recebe o novo Preço Médio ponderado calculado.
   2. Usuário digita `/investimentos` ou `/carteira` e visualiza uma tabela formatada com seus ativos, quantidade, PM e total investido.
   3. Usuário pode abater posições via `/venda`.
+
 **Plans**: 1 plan
 
 Plans:
@@ -72,6 +81,7 @@ Plans:
 ---
 
 ### Phase 4: Notificações Proativas & Alertas de Risco (`v0.2.0`)
+
 **Goal**: Tornar o bot um assistente ativo através de rotinas agendadas de envio matinal de S2S, alertas instantâneos de risco e lembretes noturnos.
 **Mode:** mvp
 **Depends on**: Phase 3
@@ -80,6 +90,7 @@ Plans:
   1. Worker matinal envia o S2S diário às 08:00 para todos os usuários cadastrados.
   2. Registro de despesa que altera o status para `RESTRICTED` ou `DEFICIT_RISK` dispara alerta preventivo imediato.
   3. Lembrete noturno às 21:00 convida o usuário para o check-in diário.
+
 **Plans**: 1 plan
 
 Plans:
@@ -88,6 +99,7 @@ Plans:
 ---
 
 ### Phase 5: Dashboard Web Completo & Gráficos 12 Ciclos (`v1.0.0`)
+
 **Goal**: Desenvolver no frontend Vue 3 os componentes visuais avançados para análise estratégica de fluxo de caixa, simulação gráfica e alocação patrimonial.
 **Mode:** mvp
 **Depends on**: Phase 4
@@ -96,6 +108,7 @@ Plans:
   1. Painel web exibe gráfico interativo da curva de liquidez para os próximos 12 ciclos.
   2. Página de investimentos exibe gráficos de distribuição percentual e histórico de compras.
   3. Gerenciamento web de contas bancárias e extrato analítico com cancelamento de parcelas.
+
 **Plans**: 2 plans
 
 Plans:
@@ -111,7 +124,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 1. Onboarding Conversacional no Telegram | v0.0.1 (MVP) | 0/2 | Not started | - |
+| 1. Onboarding Conversacional no Telegram | v0.0.1 (MVP) | 2/2 | Complete | 2026-10-03 |
 | 2. Comandos do Motor Preditivo & Operação Diária | v0.0.1 (MVP) | 0/2 | Not started | - |
 | 3. Gestão de Carteira de Ações no Telegram | v0.1.0 | 0/1 | Not started | - |
 | 4. Notificações Proativas & Alertas de Risco | v0.2.0 | 0/1 | Not started | - |

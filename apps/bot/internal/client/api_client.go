@@ -7,8 +7,30 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 )
+
+type FlexFloat float64
+
+func (f *FlexFloat) UnmarshalJSON(b []byte) error {
+	s := strings.Trim(strings.TrimSpace(string(b)), "\"")
+	if s == "" || s == "null" {
+		*f = 0
+		return nil
+	}
+	val, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return err
+	}
+	*f = FlexFloat(val)
+	return nil
+}
+
+func (f FlexFloat) MarshalJSON() ([]byte, error) {
+	return json.Marshal(float64(f))
+}
 
 type APIClient struct {
 	baseURL     string
@@ -103,13 +125,13 @@ type CycleResponse struct {
 }
 
 type EmergencyFundResponse struct {
-	MonthlyEssentialCost float64 `json:"monthly_essential_cost"`
-	Suggested6x          float64 `json:"suggested_6x"`
-	Suggested12x         float64 `json:"suggested_12x"`
-	ChosenTarget         float64 `json:"chosen_target"`
-	ChosenMonths         int     `json:"chosen_months"`
-	MonthsCovered        float64 `json:"months_covered"`
-	ProgressPercent      float64 `json:"progress_percent"`
+	MonthlyEssentialCost float64   `json:"monthly_essential_cost"`
+	Suggested6x          float64   `json:"suggested_6x"`
+	Suggested12x         float64   `json:"suggested_12x"`
+	ChosenTarget         float64   `json:"chosen_target"`
+	ChosenMonths         int       `json:"chosen_months"`
+	MonthsCovered        float64   `json:"months_covered"`
+	ProgressPercent      FlexFloat `json:"progress_percent"`
 }
 
 type OnboardingResponse struct {
@@ -186,18 +208,18 @@ type UserFinancialContext struct {
 		FlexibleSpent     float64 `json:"flexible_spent"`
 	} `json:"cycle"`
 	EmergencyFund struct {
-		MonthlyEssentialCost float64 `json:"monthly_essential_cost"`
-		Target               float64 `json:"target"`
-		Months               int     `json:"months"`
-		MonthsCovered        float64 `json:"months_covered"`
-		ProgressPercent      float64 `json:"progress_percent"`
+		MonthlyEssentialCost float64   `json:"monthly_essential_cost"`
+		Target               float64   `json:"target"`
+		Months               int       `json:"months"`
+		MonthsCovered        float64   `json:"months_covered"`
+		ProgressPercent      FlexFloat `json:"progress_percent"`
 	} `json:"emergency_fund"`
 	Investments []struct {
-		ID           string  `json:"id"`
-		Ticker       string  `json:"ticker"`
-		Quantity     float64 `json:"quantity"`
-		AveragePrice float64 `json:"average_price"`
-		TotalCost    float64 `json:"total_cost"`
+		ID           string    `json:"id"`
+		Ticker       string    `json:"ticker"`
+		Quantity     FlexFloat `json:"quantity"`
+		AveragePrice float64   `json:"average_price"`
+		TotalCost    float64   `json:"total_cost"`
 	} `json:"investments"`
 	TotalInvested float64 `json:"total_invested"`
 	TotalNetWorth float64 `json:"total_net_worth"`
@@ -240,11 +262,11 @@ type AddInvestmentRequest struct {
 
 type AddInvestmentResponse struct {
 	Investment struct {
-		ID           string  `json:"id"`
-		Ticker       string  `json:"ticker"`
-		Quantity     float64 `json:"quantity"`
-		AveragePrice float64 `json:"average_price"`
-		TotalCost    float64 `json:"total_cost"`
+		ID           string    `json:"id"`
+		Ticker       string    `json:"ticker"`
+		Quantity     FlexFloat `json:"quantity"`
+		AveragePrice float64   `json:"average_price"`
+		TotalCost    float64   `json:"total_cost"`
 	} `json:"investment"`
 	TotalInvested float64 `json:"total_invested"`
 	TotalNetWorth float64 `json:"total_net_worth"`
