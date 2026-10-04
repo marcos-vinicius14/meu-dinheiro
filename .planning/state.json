@@ -6,7 +6,7 @@
     {
       "number": "1",
       "name": "Onboarding Conversacional no Telegram",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "number": "2",
@@ -32,7 +32,7 @@
   "next": {
     "command": "/gsd-progress --next",
     "label": "Advance to the next step",
-    "reason": "Phase 1 of 5 · executing"
+    "reason": "Phase 2 of 5 · executing"
   },
-  "updated_at": "2026-10-03T14:03:16.417Z"
+  "updated_at": "2026-10-03T21:40:45.283Z"
 }

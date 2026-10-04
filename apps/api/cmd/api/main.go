@@ -64,7 +64,7 @@ func main() {
 	categoryHandler := category.NewHandler(categoryRepo)
 	transactionHandler := transaction.NewHandler(transactionService)
 	investHandler := investment.NewHandler(investService)
-	botAPIHandler := botapi.NewHandler(cfg.InternalAPIKey, userRepo, bankAccountRepo, categoryRepo, transactionRepo, investService)
+	botAPIHandler := botapi.NewHandler(cfg.InternalAPIKey, userRepo, bankAccountRepo, categoryRepo, transactionRepo, investService, transactionService)
 
 	// 6. Configura Roteamento
 	r := web.NewRouter()

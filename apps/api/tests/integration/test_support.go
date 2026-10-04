@@ -88,7 +88,7 @@ func SetupTestApp(t *testing.T) *TestApp {
 	categoryHandler := category.NewHandler(categoryRepo)
 	transactionHandler := transaction.NewHandler(transactionService)
 	investHandler := investment.NewHandler(investService)
-	botAPIHandler := botapi.NewHandler(internalAPIKey, userRepo, bankAccountRepo, categoryRepo, transactionRepo, investService)
+	botAPIHandler := botapi.NewHandler(internalAPIKey, userRepo, bankAccountRepo, categoryRepo, transactionRepo, investService, transactionService)
 
 	r := web.NewRouter()
 	authMiddleware := auth.RequireAuth(jwtService, userRepo, internalAPIKey)

@@ -14,6 +14,12 @@ const (
 	StateWaitingSavingsTarget       State = "WAITING_SAVINGS_TARGET"
 	StateWaitingInvestmentChoice    State = "WAITING_INVESTMENT_CHOICE"
 	StateWaitingInvestmentInput     State = "WAITING_INVESTMENT_INPUT"
+
+	// Estados do Check-in Diário Guiado (PRED-04, D-09, D-10, D-11)
+	StateCheckinWaitingExpenses       State = "CHECKIN_WAITING_EXPENSES"
+	StateCheckinEnteringExpense       State = "CHECKIN_ENTERING_EXPENSE"
+	StateCheckinWaitingBalanceConfirm State = "CHECKIN_WAITING_BALANCE_CONFIRM"
+	StateCheckinEnteringBalance       State = "CHECKIN_ENTERING_BALANCE"
 )
 
 // Action define as ações tipadas disparadas por botões inline (callbacks) da FSM.
@@ -26,6 +32,13 @@ const (
 	ActionSkipInvestments     Action = "skip_investments"
 	ActionAddInvestment       Action = "add_investment"
 	ActionFinishInvestments   Action = "finish_investments"
+
+	// Ações de callback do Check-in Diário
+	ActionCheckinAddExpense     Action = "checkin_add_expense"
+	ActionCheckinNoExpenses     Action = "checkin_no_expenses"
+	ActionCheckinFinishExpenses Action = "checkin_finish_expenses"
+	ActionCheckinBalanceOK      Action = "checkin_balance_ok"
+	ActionCheckinBalanceAdjust  Action = "checkin_balance_adjust"
 )
 
 // FixedExpenseData armazena temporariamente cada despesa essencial cadastrada.
@@ -44,17 +57,19 @@ type InvestmentData struct {
 
 // Session representa o estado completo de conversação e dados acumulados de um usuário.
 type Session struct {
-	TelegramID           int64              `json:"telegram_id"`
-	ChatID               int64              `json:"chat_id"`
-	FirstName            string             `json:"first_name"`
-	Username             string             `json:"username"`
-	CurrentState         State              `json:"current_state"`
-	InitialBalance       float64            `json:"initial_balance"`
-	CycleStartDay        int                `json:"cycle_start_day"`
-	FixedExpenses        []FixedExpenseData `json:"fixed_expenses"`
-	EmergencyFundMonths  int                `json:"emergency_fund_months"`
-	MonthlyEssentialCost float64            `json:"monthly_essential_cost"`
-	TargetSavings        float64            `json:"target_savings"`
-	Investments          []InvestmentData   `json:"investments"`
-	LastActiveAt         time.Time          `json:"last_active_at"`
+	TelegramID              int64              `json:"telegram_id"`
+	ChatID                  int64              `json:"chat_id"`
+	FirstName               string             `json:"first_name"`
+	Username                string             `json:"username"`
+	CurrentState            State              `json:"current_state"`
+	InitialBalance          float64            `json:"initial_balance"`
+	CycleStartDay           int                `json:"cycle_start_day"`
+	FixedExpenses           []FixedExpenseData `json:"fixed_expenses"`
+	EmergencyFundMonths     int                `json:"emergency_fund_months"`
+	MonthlyEssentialCost    float64            `json:"monthly_essential_cost"`
+	TargetSavings           float64            `json:"target_savings"`
+	Investments             []InvestmentData   `json:"investments"`
+	CheckinExpenses         []FixedExpenseData `json:"checkin_expenses"`
+	CheckinCalculatedLiquid float64            `json:"checkin_calculated_liquid"`
+	LastActiveAt            time.Time          `json:"last_active_at"`
 }

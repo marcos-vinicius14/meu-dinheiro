@@ -285,6 +285,14 @@ func (s *Service) DailyCheckIn(ctx context.Context, userID uuid.UUID, input Dail
 		return nil, err
 	}
 
+	actualSpentToday, err := s.repo.SumFlexibleExpensesByDate(ctx, userID, input.Date)
+	if err != nil {
+		return nil, err
+	}
+	if !actualSpentToday.IsZero() {
+		spentToday = actualSpentToday
+	}
+
 	contextToday := engine.CycleContext{
 		CycleInterval:     dateinterval.MonthOf(input.Date),
 		CurrentDate:       input.Date,
@@ -379,9 +387,14 @@ func (s *Service) SimulatePurchase(ctx context.Context, userID uuid.UUID, input 
 		FlexibleBudgetCap: input.FlexibleBudgetCap,
 	}
 
+	snapshots, err := s.repo.LoadSnapshotsByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
 	state := engine.CurrentState{
 		LiquidBalance: input.LiquidBalance,
-		Transactions:  nil,
+		Transactions:  snapshots,
 	}
 
 	purchase := engine.SimulatedPurchase{

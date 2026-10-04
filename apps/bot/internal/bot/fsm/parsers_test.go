@@ -170,3 +170,83 @@ func TestParseInvestment(t *testing.T) {
 		})
 	}
 }
+
+func TestParseExpenseCommand(t *testing.T) {
+	tests := []struct {
+		name       string
+		input      string
+		wantAmount float64
+		wantDesc   string
+		wantErr    bool
+	}{
+		{"valor e descrição simples com ponto", "34.90 Almoço", 34.90, "Almoço", false},
+		{"valor inteiro e descrição composta", "120 Mercado semanal", 120.00, "Mercado semanal", false},
+		{"com prefixo R$ e vírgula", "R$ 45,50 Farmácia", 45.50, "Farmácia", false},
+		{"espaços extras e valor no início", "  50   Uber  ", 50.00, "Uber", false},
+		{"descrição antes do valor", "Almoço executivo 35.00", 35.00, "Almoço executivo", false},
+		{"apenas valor sem descrição assume padrão", "25.00", 25.00, "Despesa rápida", false},
+		{"string vazia deve falhar", "", 0, "", true},
+		{"espaços em branco deve falhar", "   ", 0, "", true},
+		{"apenas texto sem número deve falhar", "apenas texto sem valor", 0, "", true},
+		{"valor negativo deve falhar", "-20 Teste", 0, "", true},
+		{"valor zero deve falhar", "0 Almoço", 0, "", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			amount, desc, err := ParseExpenseCommand(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("ParseExpenseCommand(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+			}
+			if !tt.wantErr {
+				if amount != tt.wantAmount {
+					t.Errorf("amount = %v, want %v", amount, tt.wantAmount)
+				}
+				if desc != tt.wantDesc {
+					t.Errorf("desc = %q, want %q", desc, tt.wantDesc)
+				}
+			}
+		})
+	}
+}
+
+func TestParseSimulationCommand(t *testing.T) {
+	tests := []struct {
+		name             string
+		input            string
+		wantAmount       float64
+		wantInstallments int
+		wantErr          bool
+	}{
+		{"compra à vista simples", "1500", 1500.00, 1, false},
+		{"compra à vista com moeda", "R$ 350,00", 350.00, 1, false},
+		{"compra parcelada 12x", "2400 12", 2400.00, 12, false},
+		{"compra parcelada com centavos 10x", "3500,00 10", 3500.00, 10, false},
+		{"espaços extras e 3 parcelas", "  450.00   3  ", 450.00, 3, false},
+		{"string vazia deve falhar", "", 0, 0, true},
+		{"espaços apenas deve falhar", "   ", 0, 0, true},
+		{"texto inválido deve falhar", "abc", 0, 0, true},
+		{"parcelas zero deve falhar", "2400 0", 0, 0, true},
+		{"parcelas negativas deve falhar", "2400 -5", 0, 0, true},
+		{"valor negativo deve falhar", "-500 2", 0, 0, true},
+		{"valor zero deve falhar", "0 12", 0, 0, true},
+		{"parcelas acima do limite de 48 deve falhar", "2400 60", 0, 0, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			amount, installments, err := ParseSimulationCommand(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("ParseSimulationCommand(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+			}
+			if !tt.wantErr {
+				if amount != tt.wantAmount {
+					t.Errorf("amount = %v, want %v", amount, tt.wantAmount)
+				}
+				if installments != tt.wantInstallments {
+					t.Errorf("installments = %v, want %v", installments, tt.wantInstallments)
+				}
+			}
+		})
+	}
+}
