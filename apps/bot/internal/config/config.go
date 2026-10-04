@@ -35,11 +35,14 @@ func Load() *Config {
 	webhookURL := strings.TrimSpace(os.Getenv("WEBHOOK_URL"))
 	webhookSecretToken := strings.TrimSpace(os.Getenv("WEBHOOK_SECRET_TOKEN"))
 
-	webhookPort := strings.TrimSpace(os.Getenv("WEBHOOK_PORT"))
-	if webhookPort == "" && webhookURL != "" {
+	webhookPort := ""
+	if webhookURL != "" {
 		if parsed, err := url.Parse(webhookURL); err == nil && parsed.Port() != "" {
 			webhookPort = parsed.Port()
 		}
+	}
+	if webhookPort == "" {
+		webhookPort = strings.TrimSpace(os.Getenv("WEBHOOK_PORT"))
 	}
 	if webhookPort == "" {
 		webhookPort = strings.TrimSpace(os.Getenv("PORT"))

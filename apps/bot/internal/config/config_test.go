@@ -56,3 +56,13 @@ func TestConfigLoadWithWebhookURLWithoutPath(t *testing.T) {
 	assert.Equal(t, "8888", cfg.WebhookPort)
 	assert.Equal(t, "/webhook", cfg.WebhookPath)
 }
+
+func TestConfigLoadWithWebhookURLWithPort(t *testing.T) {
+	t.Setenv("WEBHOOK_URL", "https://13.140.43.93:8443/telegram/webhook")
+	t.Setenv("WEBHOOK_PORT", "8082")
+
+	cfg := config.Load()
+	assert.Equal(t, "https://13.140.43.93:8443/telegram/webhook", cfg.WebhookURL)
+	assert.Equal(t, "8443", cfg.WebhookPort)
+	assert.Equal(t, "/telegram/webhook", cfg.WebhookPath)
+}
