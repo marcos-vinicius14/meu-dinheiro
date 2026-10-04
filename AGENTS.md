@@ -12,11 +12,16 @@ make run-api      # Inicia a API Go localmente (porta 8080)
 make run-bot      # Inicia o Bot Telegram em Go
 make run-web      # Inicia o servidor de desenvolvimento Vue 3 / Vite (porta 3000)
 make build-all    # Compila os binários de api, bot e gera o build de produção do web
-make up           # Sobe o banco PostgreSQL 18 local via Docker Compose
-make down         # Para os containers Docker
+make up           # Sobe o banco PostgreSQL 18 local via Docker Compose (compose.yaml / .env.local)
+make down         # Para os containers de desenvolvimento
+make up-prd       # Sobe a stack completa de produção (compose.prd.yaml / .env.prd)
+make down-prd     # Para os containers de produção
 ```
 
 - Docker é obrigatório para rodar os testes de integração (`Testcontainers` sobe `postgres:18-alpine` automaticamente).
+- **Ambientes**:
+  - **Local/Dev**: `compose.yaml` (apenas PostgreSQL 18) e variáveis em `.env.local` (com fallback para `.env`).
+  - **Produção**: `compose.prd.yaml` (stack completa: PostgreSQL 18, API e Bot) e variáveis em `.env.prd`.
 - Verificação completa: `make test` e `make build-all`.
 
 ---

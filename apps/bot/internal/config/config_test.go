@@ -9,7 +9,15 @@ import (
 )
 
 func TestConfigLoadDefaults(t *testing.T) {
-	// Limpa variáveis de teste
+	// Limpa variáveis de teste para garantir isolamento
+	origPort := os.Getenv("PORT")
+	os.Unsetenv("PORT")
+	defer func() {
+		if origPort != "" {
+			_ = os.Setenv("PORT", origPort)
+		}
+	}()
+
 	os.Unsetenv("WEBHOOK_URL")
 	os.Unsetenv("WEBHOOK_SECRET_TOKEN")
 	os.Unsetenv("WEBHOOK_PORT")

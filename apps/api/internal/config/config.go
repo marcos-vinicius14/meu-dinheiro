@@ -55,30 +55,37 @@ func Load() *Config {
 }
 
 func loadEnv() {
-	paths := []string{".env", "../../.env", "../.env"}
-	for _, p := range paths {
-		f, err := os.Open(p)
-		if err != nil {
-			continue
-		}
-		defer f.Close()
-
-		scanner := bufio.NewScanner(f)
-		for scanner.Scan() {
-			line := strings.TrimSpace(scanner.Text())
-			if line == "" || strings.HasPrefix(line, "#") {
+	loadFromFile := func(filename string) bool {
+		paths := []string{filename, "../../" + filename, "../" + filename}
+		for _, p := range paths {
+			f, err := os.Open(p)
+			if err != nil {
 				continue
 			}
-			parts := strings.SplitN(line, "=", 2)
-			if len(parts) == 2 {
-				key := strings.TrimSpace(parts[0])
-				val := strings.TrimSpace(parts[1])
-				val = strings.Trim(val, `"'`)
-				if _, exists := os.LookupEnv(key); !exists {
-					_ = os.Setenv(key, val)
+			defer f.Close()
+
+			scanner := bufio.NewScanner(f)
+			for scanner.Scan() {
+				line := strings.TrimSpace(scanner.Text())
+				if line == "" || strings.HasPrefix(line, "#") {
+					continue
+				}
+				parts := strings.SplitN(line, "=", 2)
+				if len(parts) == 2 {
+					key := strings.TrimSpace(parts[0])
+					val := strings.TrimSpace(parts[1])
+					val = strings.Trim(val, `"'`)
+					if _, exists := os.LookupEnv(key); !exists {
+						_ = os.Setenv(key, val)
+					}
 				}
 			}
+			return true
 		}
-		break
+		return false
 	}
+
+	// Carrega .env.local prioritariamente; em seguida, preenche eventuais pendências com .env
+	loadFromFile(".env.local")
+	loadFromFile(".env")
 }
