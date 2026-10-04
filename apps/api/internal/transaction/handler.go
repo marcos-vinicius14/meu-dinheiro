@@ -333,11 +333,11 @@ func (h *Handler) handleCreateBundle(w http.ResponseWriter, r *http.Request) {
 }
 
 type checkInRequest struct {
-	Date                           string       `json:"date"`
-	LiquidBalance                  *money.Money `json:"liquid_balance"`
-	TargetSavings                  *money.Money `json:"target_savings"`
-	FlexibleBudgetCap              *money.Money `json:"flexible_budget_cap"`
-	UntrackedExpenses              []struct {
+	Date              string       `json:"date"`
+	LiquidBalance     *money.Money `json:"liquid_balance"`
+	TargetSavings     *money.Money `json:"target_savings"`
+	FlexibleBudgetCap *money.Money `json:"flexible_budget_cap"`
+	UntrackedExpenses []struct {
 		Description string      `json:"description"`
 		Amount      money.Money `json:"amount"`
 		CategoryID  uuid.UUID   `json:"category_id"`

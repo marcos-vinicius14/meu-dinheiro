@@ -35,12 +35,29 @@ func New(start, end time.Time) (DateInterval, error) {
 	}, nil
 }
 
-// MonthOf cria um intervalo cobrindo o mês calendário inteiro da data informada.
-func MonthOf(t time.Time) DateInterval {
-	firstDay := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.UTC)
-	lastDay := firstDay.AddDate(0, 1, -1)
-	interval, _ := New(firstDay, lastDay)
+func CycleOf(t time.Time, startDay int) DateInterval {
+	if startDay < 1 || startDay > 28 {
+		startDay = 1
+	}
+	norm := NormalizeDate(t)
+	year := norm.Year()
+	month := norm.Month()
+
+	var cycleStart time.Time
+	if norm.Day() >= startDay {
+		cycleStart = time.Date(year, month, startDay, 0, 0, 0, 0, time.UTC)
+	} else {
+		cycleStart = time.Date(year, month-1, startDay, 0, 0, 0, 0, time.UTC)
+	}
+
+	cycleEnd := cycleStart.AddDate(0, 1, -1)
+	interval, _ := New(cycleStart, cycleEnd)
 	return interval
+}
+
+// MonthOf cria um intervalo cobrindo o mês calendário inteiro da data informada (equivalente a CycleOf com startDay=1).
+func MonthOf(t time.Time) DateInterval {
+	return CycleOf(t, 1)
 }
 
 // StartDate retorna a data inicial.

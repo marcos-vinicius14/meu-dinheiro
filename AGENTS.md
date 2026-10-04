@@ -12,11 +12,16 @@ make run-api      # Inicia a API Go localmente (porta 8080)
 make run-bot      # Inicia o Bot Telegram em Go
 make run-web      # Inicia o servidor de desenvolvimento Vue 3 / Vite (porta 3000)
 make build-all    # Compila os binários de api, bot e gera o build de produção do web
-make up           # Sobe o banco PostgreSQL 18 local via Docker Compose
-make down         # Para os containers Docker
+make up           # Sobe o banco PostgreSQL 18 local via Docker Compose (compose.yaml / .env.local)
+make down         # Para os containers de desenvolvimento
+make up-prd       # Sobe a stack completa de produção (compose.prd.yaml / .env.prd)
+make down-prd     # Para os containers de produção
 ```
 
 - Docker é obrigatório para rodar os testes de integração (`Testcontainers` sobe `postgres:18-alpine` automaticamente).
+- **Ambientes**:
+  - **Local/Dev**: `compose.yaml` (apenas PostgreSQL 18) e variáveis em `.env.local` (com fallback para `.env`).
+  - **Produção**: `compose.prd.yaml` (stack completa: PostgreSQL 18, API e Bot) e variáveis em `.env.prd`.
 - Verificação completa: `make test` e `make build-all`.
 
 ---
@@ -75,6 +80,11 @@ A autenticação legada (email, senha, BCrypt, chaves RSA PEM, tokens de refresh
 4. **Testes (Troféu de Testes)**:
    - Testes unitários para lógica pura e invariantes matemáticas (`money_test.go`, `date_interval_test.go`, `predictive_engine_test.go`, `what_if_simulator_test.go`).
    - Testes de integração para todos os endpoints REST contra banco PostgreSQL 18 real com Testcontainers. Proibido usar mocks de banco.
+5. **Modularidade, Responsabilidade Única & Legibilidade**:
+   - **Proibido "God Files"**: Arquivos grandes acumulando múltiplas responsabilidades são expressamente proibidos. Mantenha os arquivos coesos e bem delimitados (ex.: `types.go`, `parsers.go`, `keyboards.go`, `store.go`, `handlers.go`).
+   - **Responsabilidades Bem Definidas (SRP)**: Cada função, struct e método deve ter um propósito único e claro. Se um switch ou fluxo crescer além do razoável, decomponha em métodos ou handlers dedicados.
+   - **Facilidade de Manutenção & Extensibilidade**: O código deve ser aberto para extensão e fechado para modificação (Open/Closed). Use tipagem forte e enums/constantes em vez de strings literais soltas (`type Action string`).
+   - **Legibilidade & Nomenclatura Expressiva**: Nunca economize no nome de variáveis, parâmetros ou funções. É proibido usar variáveis crípticas de 1 ou 2 letras para entidades de domínio (use `userFinancialContext`, `monthlyEssentialCost`, `currentSession` em vez de `u`, `c`, `s`). Variáveis devem ser autodocumentadas e expressar claramente a regra de negócio.
 
 ---
 

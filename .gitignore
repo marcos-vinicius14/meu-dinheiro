@@ -33,6 +33,10 @@ build/
 .vscode/
 
 .env
+.env.local
+.env.prd
+.env.*
+!.env.example
 bin/
 node_modules/
 dist/

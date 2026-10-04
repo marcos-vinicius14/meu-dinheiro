@@ -220,12 +220,12 @@ type UntrackedExpenseInput struct {
 }
 
 type DailyCheckInInput struct {
-	Date                             time.Time               `json:"date"`
-	LiquidBalance                    money.Money             `json:"liquid_balance"`
-	TargetSavings                    money.Money             `json:"target_savings"`
-	FlexibleBudgetCap                money.Money             `json:"flexible_budget_cap"`
-	UntrackedExpenses                []UntrackedExpenseInput `json:"untracked_expenses"`
-	ConfirmedPendingTransactionIDs   []uuid.UUID             `json:"confirmed_pending_transaction_ids"`
+	Date                           time.Time               `json:"date"`
+	LiquidBalance                  money.Money             `json:"liquid_balance"`
+	TargetSavings                  money.Money             `json:"target_savings"`
+	FlexibleBudgetCap              money.Money             `json:"flexible_budget_cap"`
+	UntrackedExpenses              []UntrackedExpenseInput `json:"untracked_expenses"`
+	ConfirmedPendingTransactionIDs []uuid.UUID             `json:"confirmed_pending_transaction_ids"`
 }
 
 type DailyCheckInResult struct {
@@ -283,6 +283,14 @@ func (s *Service) DailyCheckIn(ctx context.Context, userID uuid.UUID, input Dail
 	snapshots, err := s.repo.LoadSnapshotsByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
+	}
+
+	actualSpentToday, err := s.repo.SumFlexibleExpensesByDate(ctx, userID, input.Date)
+	if err != nil {
+		return nil, err
+	}
+	if !actualSpentToday.IsZero() {
+		spentToday = actualSpentToday
 	}
 
 	contextToday := engine.CycleContext{
@@ -379,9 +387,14 @@ func (s *Service) SimulatePurchase(ctx context.Context, userID uuid.UUID, input 
 		FlexibleBudgetCap: input.FlexibleBudgetCap,
 	}
 
+	snapshots, err := s.repo.LoadSnapshotsByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
 	state := engine.CurrentState{
 		LiquidBalance: input.LiquidBalance,
-		Transactions:  nil,
+		Transactions:  snapshots,
 	}
 
 	purchase := engine.SimulatedPurchase{

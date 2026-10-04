@@ -31,7 +31,7 @@ func main() {
 	}
 
 	apiClient := client.NewAPIClient(cfg.APIBaseURL, cfg.InternalAPIKey)
-	b := bot.NewBot(botAPI, apiClient, logger)
+	b := bot.NewBot(botAPI, apiClient, logger, cfg)
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()

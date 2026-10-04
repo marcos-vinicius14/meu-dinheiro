@@ -11,7 +11,7 @@ import (
 
 var (
 	ErrAccountNotFound        = errors.New("conta bancária não encontrada")
-	ErrAccountLimitReached     = errors.New("limite de 3 contas bancárias atingido")
+	ErrAccountLimitReached    = errors.New("limite de 3 contas bancárias atingido")
 	ErrAccountHasTransactions = errors.New("conta bancária possui transações vinculadas")
 	ErrInvalidAccountType     = errors.New("tipo de conta inválido. Tipos aceitos: CHECKING, SAVINGS, INVESTMENT")
 	ErrInvalidAccountName     = errors.New("nome da conta bancária deve ter entre 1 e 255 caracteres")

@@ -1,4 +1,12 @@
-.PHONY: test test-api test-bot run-api run-bot run-web build-all up down
+ifneq (,$(wildcard .env.local))
+    include .env.local
+    export
+else ifneq (,$(wildcard .env))
+    include .env
+    export
+endif
+
+.PHONY: test test-api test-bot run-api run-bot run-web build-all up down up-prd down-prd
 
 test: test-api test-bot
 
@@ -27,3 +35,9 @@ up:
 
 down:
 	docker compose down
+
+up-prd:
+	docker compose -f compose.prd.yaml up -d
+
+down-prd:
+	docker compose -f compose.prd.yaml down

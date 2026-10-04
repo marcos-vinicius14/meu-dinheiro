@@ -22,10 +22,15 @@ Composto por:
 # Executar todos os testes automatizados
 make test
 
-# Iniciar o banco PostgreSQL localmente
-make up
+# Iniciar o banco PostgreSQL de desenvolvimento localmente
+make up        # usa compose.yaml e .env.local
+make down
 
-# Iniciar os serviços
+# Iniciar a stack completa em modo produção (containers)
+make up-prd    # usa compose.prd.yaml e .env.prd
+make down-prd
+
+# Iniciar os serviços localmente (desenvolvimento)
 make run-api   # http://localhost:8080
 make run-bot   # Polling Telegram
 make run-web   # http://localhost:3000
@@ -33,6 +38,12 @@ make run-web   # http://localhost:3000
 # Compilar todos os pacotes para produção
 make build-all
 ```
+
+### Configuração de Ambientes (.env)
+
+- **Local/Dev**: Crie `.env.local` a partir de `.env.example` (`cp .env.example .env.local`). O compose `compose.yaml` gerencia o PostgreSQL local.
+- **Produção**: Crie `.env.prd` a partir de `.env.example` (`cp .env.example .env.prd`). O compose `compose.prd.yaml` gerencia a stack completa em containers (PostgreSQL, API e Bot).
+
 
 ---
 

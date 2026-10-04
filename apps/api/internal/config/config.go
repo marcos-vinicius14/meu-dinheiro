@@ -1,7 +1,9 @@
 package config
 
 import (
+	"bufio"
 	"os"
+	"strings"
 )
 
 type Config struct {
@@ -13,6 +15,8 @@ type Config struct {
 }
 
 func Load() *Config {
+	loadEnv()
+
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
 		dbURL = "postgres://postgres:postgres@localhost:5432/meudinheiro?sslmode=disable"
@@ -48,4 +52,42 @@ func Load() *Config {
 		BotUsername:    botUsername,
 		InternalAPIKey: internalAPIKey,
 	}
+}
+
+func loadEnv() {
+	loadFromFile := func(filename string) bool {
+		paths := []string{filename, "../../" + filename, "../" + filename}
+		for _, p := range paths {
+			f, err := os.Open(p)
+			if err != nil {
+				continue
+			}
+			defer f.Close()
+
+			scanner := bufio.NewScanner(f)
+			for scanner.Scan() {
+				line := strings.TrimSpace(scanner.Text())
+				if line == "" || strings.HasPrefix(line, "#") {
+					continue
+				}
+				parts := strings.SplitN(line, "=", 2)
+				if len(parts) == 2 {
+					key := strings.TrimSpace(parts[0])
+					val := strings.TrimSpace(parts[1])
+					val = strings.Trim(val, `"'`)
+					if _, exists := os.LookupEnv(key); !exists {
+						_ = os.Setenv(key, val)
+					}
+				}
+			}
+			return true
+		}
+		return false
+	}
+
+	// Carrega .env.local prioritariamente; se não existir, tenta .env
+	if loadFromFile(".env.local") {
+		return
+	}
+	loadFromFile(".env")
 }

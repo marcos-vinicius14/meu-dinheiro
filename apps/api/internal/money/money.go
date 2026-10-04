@@ -85,7 +85,11 @@ func (m Money) IsNegative() bool {
 	return m.val.IsNegative()
 }
 
-// IsZero verifica se o valor é exatamente zero.
+// IsPositive verifica se o valor é estritamente maior que zero.
+func (m Money) IsPositive() bool {
+	return m.val.IsPositive()
+}
+
 func (m Money) IsZero() bool {
 	return m.val.IsZero()
 }

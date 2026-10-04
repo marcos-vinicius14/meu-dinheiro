@@ -158,7 +158,10 @@ func (h *Handler) handleBotSession(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) requireInternalKey(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		key := r.Header.Get("X-Internal-API-Key")
+		key := r.Header.Get("X-Internal-Secret")
+		if key == "" {
+			key = r.Header.Get("X-Internal-API-Key")
+		}
 		if key == "" || key != h.internalAPIKey {
 			web.Error(w, http.StatusForbidden, "Acesso restrito: chave interna inválida")
 			return
