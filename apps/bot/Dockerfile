@@ -27,6 +27,6 @@ COPY --from=builder /app/bin/bot /usr/local/bin/bot
 
 USER appuser
 
-EXPOSE 8081
+EXPOSE 8082
 
 ENTRYPOINT ["/usr/local/bin/bot"]

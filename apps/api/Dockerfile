@@ -27,6 +27,6 @@ COPY --from=builder /app/bin/api /usr/local/bin/api
 
 USER appuser
 
-EXPOSE 8080
+EXPOSE 8081
 
 ENTRYPOINT ["/usr/local/bin/api"]
