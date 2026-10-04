@@ -20,8 +20,19 @@ jobs:
         env:
           COOLIFY_WEBHOOK_URL: ${{ secrets.COOLIFY_WEBHOOK_URL }}
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN || secrets.COOLIFY_BEARER_TOKEN }}
+          COOLIFY_HOST_IP: ${{ secrets.COOLIFY_HOST_IP }}
         run: |
+          RESOLVE_ARGS=""
+          if [ -n "$COOLIFY_HOST_IP" ]; then
+            # Extrai o domínio da URL para forçar o curl a conectar direto no IP da VPS ignorando Cloudflare
+            DOMAIN=$(echo "$COOLIFY_WEBHOOK_URL" | sed -E 's|https?://([^/:]+).*|\1|')
+            RESOLVE_ARGS="--resolve $DOMAIN:443:$COOLIFY_HOST_IP --resolve $DOMAIN:80:$COOLIFY_HOST_IP"
+            echo "Conectando diretamente ao IP da VPS ($COOLIFY_HOST_IP) para o domínio $DOMAIN..."
+          fi
+
           curl --fail-with-body \
+            --insecure \
+            $RESOLVE_ARGS \
             --request POST \
             --header "Authorization: Bearer $COOLIFY_TOKEN" \
             --header "User-Agent: GitHub-Actions-Deploy/1.0" \
