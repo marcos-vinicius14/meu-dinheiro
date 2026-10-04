@@ -22,6 +22,7 @@ type Handler struct {
 	categoryRepo    *category.Repository
 	transactionRepo *transaction.Repository
 	investService   *investment.Service
+	txService       *transaction.Service
 	predictiveEng   *engine.PredictiveEngine
 }
 
@@ -32,6 +33,7 @@ func NewHandler(
 	categoryRepo *category.Repository,
 	transactionRepo *transaction.Repository,
 	investService *investment.Service,
+	txService *transaction.Service,
 ) *Handler {
 	return &Handler{
 		internalKey:     internalKey,
@@ -40,6 +42,7 @@ func NewHandler(
 		categoryRepo:    categoryRepo,
 		transactionRepo: transactionRepo,
 		investService:   investService,
+		txService:       txService,
 		predictiveEng:   engine.NewPredictiveEngine(),
 	}
 }
@@ -51,6 +54,10 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 		internal.Get("/internal/users/context-by-telegram", h.handleContextByTelegram)
 		internal.Post("/internal/investments", h.handleAddInvestment)
 		internal.Post("/internal/transactions/quick-expense", h.handleQuickExpense)
+		internal.Post("/internal/transactions/simulations", h.handleSimulatePurchase)
+		internal.Post("/internal/transactions/checkin", h.handleDailyCheckIn)
+		internal.Post("/internal/transactions/income", h.handleIncome)
+		internal.Post("/internal/bank-accounts/balance", h.handleAdjustBalance)
 	})
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/internal/database"
 	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/internal/dateinterval"
+	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/internal/money"
 	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/internal/transaction/engine"
 )
 
@@ -280,4 +281,22 @@ func (r *Repository) LoadSnapshotsByUserID(ctx context.Context, userID uuid.UUID
 		snapshots = []engine.TransactionSnapshot{}
 	}
 	return snapshots, nil
+}
+
+func (r *Repository) SumFlexibleExpensesByDate(ctx context.Context, userID uuid.UUID, date time.Time) (money.Money, error) {
+	normDate := dateinterval.NormalizeDate(date)
+	query := `
+		SELECT COALESCE(SUM(value), 0)
+		FROM tb_transactions
+		WHERE user_id = $1
+		  AND type = 'FLEXIBLE_EXPENSE'
+		  AND status = 'CONFIRMED'
+		  AND (payment_date = $2 OR (payment_date IS NULL AND due_date = $2))
+	`
+	var total money.Money
+	err := r.pool.QueryRow(ctx, query, userID, normDate).Scan(&total)
+	if err != nil {
+		return money.Zero(), fmt.Errorf("somar despesas do dia: %w", err)
+	}
+	return total, nil
 }

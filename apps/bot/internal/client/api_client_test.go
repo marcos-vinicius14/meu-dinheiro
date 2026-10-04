@@ -177,3 +177,221 @@ func TestAPIClientQuickExpense(t *testing.T) {
 	assert.Equal(t, 82.50, resp.NewS2S)
 	assert.Equal(t, 85.00, resp.PreviousS2S)
 }
+
+func TestAPIClientSimulatePurchase(t *testing.T) {
+	expectedSecret := "bot-secret"
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/internal/transactions/simulations", r.URL.Path)
+		assert.Equal(t, expectedSecret, r.Header.Get("X-Internal-Secret"))
+		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+
+		var req client.SimulationRequest
+		err := json.NewDecoder(r.Body).Decode(&req)
+		require.NoError(t, err)
+		assert.Equal(t, int64(12345), req.TelegramID)
+		assert.Equal(t, 2400.00, req.Amount)
+		assert.Equal(t, 12, req.Installments)
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{
+			"total_amount": 2400.00,
+			"installments": 12,
+			"installment_amount": 200.00,
+			"current_cycle_s2s_before": 100.00,
+			"current_cycle_s2s_after": 93.33,
+			"current_cycle_reduction": 6.67,
+			"current_cycle_reduction_percent": 6.67,
+			"critical_cycle_number": 1,
+			"critical_cycle_s2s": 93.33,
+			"critical_cycle_health_status": "HEALTHY",
+			"deficit_risk_alert": false,
+			"recommendation_message": "Compra segura.",
+			"cycles": [
+				{
+					"cycle_start": "2026-10-01",
+					"cycle_end": "2026-10-31",
+					"s2s_today": 93.33,
+					"s2s_reduction": 6.67,
+					"s2s_reduction_percent": 6.67,
+					"projected_balance": 1800.00,
+					"health_status": "HEALTHY",
+					"bottleneck": false
+				}
+			]
+		}`))
+	}))
+	defer server.Close()
+
+	apiClient := client.NewAPIClient(server.URL, expectedSecret)
+	resp, err := apiClient.SimulatePurchase(context.Background(), client.SimulationRequest{
+		TelegramID:   12345,
+		Amount:       2400.00,
+		Installments: 12,
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, 2400.00, resp.TotalAmount)
+	assert.Equal(t, 12, resp.Installments)
+	assert.Equal(t, 200.00, resp.InstallmentAmount)
+	assert.Equal(t, 100.00, resp.CurrentCycleS2SBefore)
+	assert.Equal(t, 93.33, resp.CurrentCycleS2SAfter)
+	assert.Equal(t, "HEALTHY", resp.CriticalCycleHealthStatus)
+	assert.False(t, resp.DeficitRiskAlert)
+	assert.Len(t, resp.Cycles, 1)
+}
+
+func TestAPIClientDailyCheckIn(t *testing.T) {
+	expectedSecret := "bot-secret"
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/internal/transactions/checkin", r.URL.Path)
+		assert.Equal(t, expectedSecret, r.Header.Get("X-Internal-Secret"))
+
+		var req client.DailyCheckInRequest
+		err := json.NewDecoder(r.Body).Decode(&req)
+		require.NoError(t, err)
+		assert.Equal(t, int64(12345), req.TelegramID)
+		assert.Len(t, req.UntrackedExpenses, 1)
+		assert.Equal(t, 35.00, req.UntrackedExpenses[0].Amount)
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{
+			"s2s_calculated": 80.00,
+			"spent_today": 35.00,
+			"daily_quota": 80.00,
+			"delta_savings": 45.00,
+			"health_status": "HEALTHY",
+			"next_day_s2s": 82.50,
+			"days_remaining": 15,
+			"message": "Parabéns! Você economizou R$ 45,00 hoje."
+		}`))
+	}))
+	defer server.Close()
+
+	apiClient := client.NewAPIClient(server.URL, expectedSecret)
+	resp, err := apiClient.DailyCheckIn(context.Background(), client.DailyCheckInRequest{
+		TelegramID: 12345,
+		UntrackedExpenses: []client.CheckInExpenseInput{
+			{Description: "Lanche", Amount: 35.00, CategoryName: "Alimentação"},
+		},
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, 80.00, resp.S2SCalculated)
+	assert.Equal(t, 35.00, resp.SpentToday)
+	assert.Equal(t, 45.00, resp.DeltaSavings)
+	assert.Equal(t, 82.50, resp.NextDayS2S)
+	assert.Contains(t, resp.Message, "economizou")
+}
+
+func TestAPIClientAdjustAccountBalance(t *testing.T) {
+	expectedSecret := "bot-secret"
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/internal/bank-accounts/balance", r.URL.Path)
+		assert.Equal(t, expectedSecret, r.Header.Get("X-Internal-Secret"))
+
+		var req client.AdjustBalanceRequest
+		err := json.NewDecoder(r.Body).Decode(&req)
+		require.NoError(t, err)
+		assert.Equal(t, int64(12345), req.TelegramID)
+		assert.Equal(t, 4800.00, req.NewBalance)
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{
+			"account_id": "acc-123",
+			"account_name": "Conta Corrente",
+			"previous_balance": 5000.00,
+			"new_balance": 4800.00,
+			"total_liquid_balance": 4800.00,
+			"message": "Saldo da conta Conta Corrente atualizado com sucesso."
+		}`))
+	}))
+	defer server.Close()
+
+	apiClient := client.NewAPIClient(server.URL, expectedSecret)
+	resp, err := apiClient.AdjustAccountBalance(context.Background(), client.AdjustBalanceRequest{
+		TelegramID: 12345,
+		NewBalance: 4800.00,
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, "acc-123", resp.AccountID)
+	assert.Equal(t, 4800.00, resp.NewBalance)
+	assert.Equal(t, 4800.00, resp.TotalLiquidBalance)
+	assert.Contains(t, resp.Message, "atualizado com sucesso")
+}
+
+func TestAPIClientErrors(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":"telegram_id é obrigatório"}`))
+	}))
+	defer server.Close()
+
+	apiClient := client.NewAPIClient(server.URL, "secret")
+
+	_, err := apiClient.SimulatePurchase(context.Background(), client.SimulationRequest{})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "status 400")
+
+	_, err = apiClient.DailyCheckIn(context.Background(), client.DailyCheckInRequest{})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "status 400")
+
+	_, err = apiClient.AdjustAccountBalance(context.Background(), client.AdjustBalanceRequest{})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "status 400")
+
+	_, err = apiClient.RegisterIncome(context.Background(), client.IncomeRequest{})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "status 400")
+}
+
+func TestAPIClientRegisterIncome(t *testing.T) {
+	expectedSecret := "bot-secret"
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/internal/transactions/income", r.URL.Path)
+		assert.Equal(t, expectedSecret, r.Header.Get("X-Internal-Secret"))
+
+		var req client.IncomeRequest
+		err := json.NewDecoder(r.Body).Decode(&req)
+		require.NoError(t, err)
+		assert.Equal(t, int64(12345), req.TelegramID)
+		assert.Equal(t, 5000.00, req.Amount)
+		assert.Equal(t, "Salário", req.Description)
+
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte(`{
+			"transaction": {
+				"id": "tx-inc-1",
+				"description": "Salário",
+				"amount": 5000.00
+			},
+			"category_name": "Renda",
+			"previous_s2s": 50.00,
+			"new_s2s": 216.66,
+			"health_status": "HEALTHY",
+			"days_remaining": 20,
+			"total_liquid_balance": 5200.00
+		}`))
+	}))
+	defer server.Close()
+
+	apiClient := client.NewAPIClient(server.URL, expectedSecret)
+	resp, err := apiClient.RegisterIncome(context.Background(), client.IncomeRequest{
+		TelegramID:  12345,
+		Amount:      5000.00,
+		Description: "Salário",
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, "tx-inc-1", resp.Transaction.ID)
+	assert.Equal(t, "Renda", resp.CategoryName)
+	assert.Equal(t, 50.00, resp.PreviousS2S)
+	assert.Equal(t, 216.66, resp.NewS2S)
+	assert.Equal(t, "HEALTHY", resp.HealthStatus)
+	assert.Equal(t, 5200.00, resp.TotalLiquidBalance)
+}

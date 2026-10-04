@@ -7,37 +7,17 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
-	"strings"
 	"time"
 )
 
-type FlexFloat float64
-
-func (f *FlexFloat) UnmarshalJSON(b []byte) error {
-	s := strings.Trim(strings.TrimSpace(string(b)), "\"")
-	if s == "" || s == "null" {
-		*f = 0
-		return nil
-	}
-	val, err := strconv.ParseFloat(s, 64)
-	if err != nil {
-		return err
-	}
-	*f = FlexFloat(val)
-	return nil
-}
-
-func (f FlexFloat) MarshalJSON() ([]byte, error) {
-	return json.Marshal(float64(f))
-}
-
+// APIClient é o cliente HTTP responsável pela comunicação entre o bot do Telegram e a API Meu Dinheiro.
 type APIClient struct {
 	baseURL     string
 	internalKey string
 	httpClient  *http.Client
 }
 
+// NewAPIClient instancia um novo APIClient com timeout configurado.
 func NewAPIClient(baseURL, internalKey string) *APIClient {
 	return &APIClient{
 		baseURL:     baseURL,
@@ -48,12 +28,7 @@ func NewAPIClient(baseURL, internalKey string) *APIClient {
 	}
 }
 
-type AuthorizeChallengeRequest struct {
-	Token      string `json:"token"`
-	TelegramID int64  `json:"telegram_id"`
-	Name       string `json:"name"`
-}
-
+// AuthorizeChallenge autoriza o desafio de login Telegram emitido no frontend web.
 func (c *APIClient) AuthorizeChallenge(ctx context.Context, token string, telegramID int64, name string) error {
 	reqBody := AuthorizeChallengeRequest{
 		Token:      token,
@@ -89,61 +64,7 @@ func (c *APIClient) AuthorizeChallenge(ctx context.Context, token string, telegr
 	return nil
 }
 
-// --- TIPOS E MÉTODOS DO ONBOARDING, CONTEXTO E OPERAÇÃO DIÁRIA ---
-
-type FixedExpenseInput struct {
-	Description  string  `json:"description"`
-	Amount       float64 `json:"amount"`
-	CategoryName string  `json:"category_name"`
-}
-
-type InitialInvestmentInput struct {
-	Ticker       string  `json:"ticker"`
-	Quantity     float64 `json:"quantity"`
-	AveragePrice float64 `json:"average_price"`
-}
-
-type OnboardingRequest struct {
-	TelegramID          int64                    `json:"telegram_id"`
-	FirstName           string                   `json:"first_name"`
-	Username            *string                  `json:"username,omitempty"`
-	InitialBalance      float64                  `json:"initial_balance"`
-	CycleStartDay       int                      `json:"cycle_start_day"`
-	FixedExpenses       []FixedExpenseInput      `json:"fixed_expenses"`
-	EmergencyFundMonths int                      `json:"emergency_fund_months"`
-	TargetSavings       float64                  `json:"target_savings"`
-	FlexibleBudgetCap   float64                  `json:"flexible_budget_cap"`
-	Investments         []InitialInvestmentInput `json:"investments"`
-}
-
-type CycleResponse struct {
-	StartDate     string  `json:"start_date"`
-	EndDate       string  `json:"end_date"`
-	DaysRemaining int     `json:"days_remaining"`
-	S2SToday      float64 `json:"s2s_today"`
-	HealthStatus  string  `json:"health_status"`
-}
-
-type EmergencyFundResponse struct {
-	MonthlyEssentialCost float64   `json:"monthly_essential_cost"`
-	Suggested6x          float64   `json:"suggested_6x"`
-	Suggested12x         float64   `json:"suggested_12x"`
-	ChosenTarget         float64   `json:"chosen_target"`
-	ChosenMonths         int       `json:"chosen_months"`
-	MonthsCovered        float64   `json:"months_covered"`
-	ProgressPercent      FlexFloat `json:"progress_percent"`
-}
-
-type OnboardingResponse struct {
-	Message            string                `json:"message"`
-	UserID             string                `json:"user_id"`
-	Cycle              CycleResponse         `json:"cycle"`
-	EmergencyFund      EmergencyFundResponse `json:"emergency_fund"`
-	TotalLiquidBalance float64               `json:"total_liquid_balance"`
-	TotalInvested      float64               `json:"total_invested"`
-	TotalNetWorth      float64               `json:"total_net_worth"`
-}
-
+// SaveOnboarding envia o payload inicial de configuração do usuário no encerramento do diálogo.
 func (c *APIClient) SaveOnboarding(ctx context.Context, req OnboardingRequest) (*OnboardingResponse, error) {
 	data, err := json.Marshal(req)
 	if err != nil {
@@ -178,53 +99,7 @@ func (c *APIClient) SaveOnboarding(ctx context.Context, req OnboardingRequest) (
 	return &resp, nil
 }
 
-type UserFinancialContext struct {
-	User struct {
-		ID                  string  `json:"id"`
-		TelegramID          int64   `json:"telegram_id"`
-		FirstName           string  `json:"first_name"`
-		Username            *string `json:"username,omitempty"`
-		TargetSavings       float64 `json:"target_savings"`
-		FlexibleBudgetCap   float64 `json:"flexible_budget_cap"`
-		EmergencyFundTarget float64 `json:"emergency_fund_target"`
-		EmergencyFundMonths int     `json:"emergency_fund_months"`
-		CycleStartDay       int     `json:"cycle_start_day"`
-	} `json:"user"`
-	Accounts []struct {
-		ID             string  `json:"id"`
-		Name           string  `json:"name"`
-		Type           string  `json:"type"`
-		CurrentBalance float64 `json:"current_balance"`
-	} `json:"accounts"`
-	TotalLiquidBalance float64 `json:"total_liquid_balance"`
-	Cycle              struct {
-		StartDate         string  `json:"start_date"`
-		EndDate           string  `json:"end_date"`
-		DaysRemaining     int     `json:"days_remaining"`
-		S2SToday          float64 `json:"s2s_today"`
-		HealthStatus      string  `json:"health_status"`
-		ProjectedBalance  float64 `json:"projected_balance"`
-		RemainingFlexible float64 `json:"remaining_flexible"`
-		FlexibleSpent     float64 `json:"flexible_spent"`
-	} `json:"cycle"`
-	EmergencyFund struct {
-		MonthlyEssentialCost float64   `json:"monthly_essential_cost"`
-		Target               float64   `json:"target"`
-		Months               int       `json:"months"`
-		MonthsCovered        float64   `json:"months_covered"`
-		ProgressPercent      FlexFloat `json:"progress_percent"`
-	} `json:"emergency_fund"`
-	Investments []struct {
-		ID           string    `json:"id"`
-		Ticker       string    `json:"ticker"`
-		Quantity     FlexFloat `json:"quantity"`
-		AveragePrice float64   `json:"average_price"`
-		TotalCost    float64   `json:"total_cost"`
-	} `json:"investments"`
-	TotalInvested float64 `json:"total_invested"`
-	TotalNetWorth float64 `json:"total_net_worth"`
-}
-
+// GetUserContextByTelegram obtém a fotografia financeira consolidada do usuário (S2S, saldo líquido, ciclo, patrimônio).
 func (c *APIClient) GetUserContextByTelegram(ctx context.Context, telegramID int64) (*UserFinancialContext, error) {
 	url := fmt.Sprintf("%s/internal/users/context-by-telegram?telegram_id=%d", c.baseURL, telegramID)
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -253,25 +128,7 @@ func (c *APIClient) GetUserContextByTelegram(ctx context.Context, telegramID int
 	return &ctxResp, nil
 }
 
-type AddInvestmentRequest struct {
-	TelegramID int64   `json:"telegram_id"`
-	Ticker     string  `json:"ticker"`
-	Quantity   float64 `json:"quantity"`
-	Price      float64 `json:"price"`
-}
-
-type AddInvestmentResponse struct {
-	Investment struct {
-		ID           string    `json:"id"`
-		Ticker       string    `json:"ticker"`
-		Quantity     FlexFloat `json:"quantity"`
-		AveragePrice float64   `json:"average_price"`
-		TotalCost    float64   `json:"total_cost"`
-	} `json:"investment"`
-	TotalInvested float64 `json:"total_invested"`
-	TotalNetWorth float64 `json:"total_net_worth"`
-}
-
+// AddInvestment registra um novo aporte de investimento para o usuário.
 func (c *APIClient) AddInvestment(ctx context.Context, req AddInvestmentRequest) (*AddInvestmentResponse, error) {
 	data, err := json.Marshal(req)
 	if err != nil {
@@ -306,27 +163,7 @@ func (c *APIClient) AddInvestment(ctx context.Context, req AddInvestmentRequest)
 	return &resp, nil
 }
 
-type QuickExpenseRequest struct {
-	TelegramID   int64   `json:"telegram_id"`
-	Amount       float64 `json:"amount"`
-	Description  string  `json:"description"`
-	CategoryName string  `json:"category_name,omitempty"`
-	Date         string  `json:"date,omitempty"`
-}
-
-type QuickExpenseResponse struct {
-	Transaction struct {
-		ID          string  `json:"id"`
-		Description string  `json:"description"`
-		Amount      float64 `json:"amount"`
-	} `json:"transaction"`
-	CategoryName  string  `json:"category_name"`
-	PreviousS2S   float64 `json:"previous_s2s"`
-	NewS2S        float64 `json:"new_s2s"`
-	HealthStatus  string  `json:"health_status"`
-	DaysRemaining int     `json:"days_remaining"`
-}
-
+// QuickExpense registra um gasto diário rápido com recalibração imediata do S2S.
 func (c *APIClient) QuickExpense(ctx context.Context, req QuickExpenseRequest) (*QuickExpenseResponse, error) {
 	data, err := json.Marshal(req)
 	if err != nil {
@@ -354,6 +191,146 @@ func (c *APIClient) QuickExpense(ctx context.Context, req QuickExpenseRequest) (
 	}
 
 	var resp QuickExpenseResponse
+	if err := json.NewDecoder(res.Body).Decode(&resp); err != nil {
+		return nil, fmt.Errorf("decodificar resposta: %w", err)
+	}
+
+	return &resp, nil
+}
+
+// SimulatePurchase executa uma simulação what-if de compra (à vista ou até 48x) projetando o impacto em até 12 ciclos futuros.
+func (c *APIClient) SimulatePurchase(ctx context.Context, req SimulationRequest) (*SimulationResponse, error) {
+	data, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("serializar simulacao: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/internal/transactions/simulations", c.baseURL)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("criar requisicao http: %w", err)
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("X-Internal-Secret", c.internalKey)
+
+	res, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("falha ao conectar com api: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(res.Body)
+		return nil, fmt.Errorf("erro da api (status %d): %s", res.StatusCode, string(body))
+	}
+
+	var resp SimulationResponse
+	if err := json.NewDecoder(res.Body).Decode(&resp); err != nil {
+		return nil, fmt.Errorf("decodificar resposta: %w", err)
+	}
+
+	return &resp, nil
+}
+
+// DailyCheckIn executa a conciliação diária de despesas não rastreadas e salva o snapshot diário no banco de forma idempotente.
+func (c *APIClient) DailyCheckIn(ctx context.Context, req DailyCheckInRequest) (*DailyCheckInResponse, error) {
+	data, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("serializar checkin: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/internal/transactions/checkin", c.baseURL)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("criar requisicao http: %w", err)
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("X-Internal-Secret", c.internalKey)
+
+	res, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("falha ao conectar com api: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(res.Body)
+		return nil, fmt.Errorf("erro da api (status %d): %s", res.StatusCode, string(body))
+	}
+
+	var resp DailyCheckInResponse
+	if err := json.NewDecoder(res.Body).Decode(&resp); err != nil {
+		return nil, fmt.Errorf("decodificar resposta: %w", err)
+	}
+
+	return &resp, nil
+}
+
+// AdjustAccountBalance atualiza o saldo bancário da conta principal ou de uma conta específica durante o check-in.
+func (c *APIClient) AdjustAccountBalance(ctx context.Context, req AdjustBalanceRequest) (*AdjustBalanceResponse, error) {
+	data, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("serializar ajuste de saldo: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/internal/bank-accounts/balance", c.baseURL)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("criar requisicao http: %w", err)
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("X-Internal-Secret", c.internalKey)
+
+	res, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("falha ao conectar com api: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(res.Body)
+		return nil, fmt.Errorf("erro da api (status %d): %s", res.StatusCode, string(body))
+	}
+
+	var resp AdjustBalanceResponse
+	if err := json.NewDecoder(res.Body).Decode(&resp); err != nil {
+		return nil, fmt.Errorf("decodificar resposta: %w", err)
+	}
+
+	return &resp, nil
+}
+
+// RegisterIncome registra uma entrada de dinheiro (renda/receita) com recalibração imediata do S2S para cima.
+func (c *APIClient) RegisterIncome(ctx context.Context, req IncomeRequest) (*IncomeResponse, error) {
+	data, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("serializar receita: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/internal/transactions/income", c.baseURL)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("criar requisicao http: %w", err)
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("X-Internal-Secret", c.internalKey)
+
+	res, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("falha ao conectar com api: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusCreated {
+		body, _ := io.ReadAll(res.Body)
+		return nil, fmt.Errorf("erro da api (status %d): %s", res.StatusCode, string(body))
+	}
+
+	var resp IncomeResponse
 	if err := json.NewDecoder(res.Body).Decode(&resp); err != nil {
 		return nil, fmt.Errorf("decodificar resposta: %w", err)
 	}

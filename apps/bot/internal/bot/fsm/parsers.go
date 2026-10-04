@@ -181,3 +181,95 @@ func ParseInvestment(input string) (*InvestmentData, error) {
 		AveragePrice: price,
 	}, nil
 }
+
+// ParseExpenseCommand interpreta os argumentos do comando /gasto (ex: "34.90 Almoço", "120 Mercado", "Almoço 34.90").
+func ParseExpenseCommand(args string) (float64, string, error) {
+	raw := strings.TrimSpace(args)
+	if raw == "" {
+		return 0, "", errors.New("Argumentos obrigatórios ausentes. Envie no formato: /gasto <valor> <descrição>")
+	}
+
+	words := strings.Fields(raw)
+	if len(words) == 0 {
+		return 0, "", errors.New("Argumentos obrigatórios ausentes. Envie no formato: /gasto <valor> <descrição>")
+	}
+
+	var descParts []string
+	var amount float64
+	var foundAmount bool
+
+	for _, w := range words {
+		if strings.EqualFold(w, "R$") {
+			continue
+		}
+		cleanToken := strings.TrimPrefix(strings.TrimPrefix(w, "R$"), "r$")
+		if val, err := ParseMoney(cleanToken); err == nil && !foundAmount {
+			amount = val
+			foundAmount = true
+		} else {
+			descParts = append(descParts, w)
+		}
+	}
+
+	if !foundAmount {
+		return 0, "", errors.New("Valor monetário inválido ou ausente. Envie um valor positivo (ex: 35.00 ou 35,00).")
+	}
+
+	description := strings.TrimSpace(strings.Trim(strings.Join(descParts, " "), ",;:-"))
+	if description == "" {
+		description = "Despesa rápida"
+	}
+
+	return amount, description, nil
+}
+
+// ParseSimulationCommand interpreta argumentos de simulação (ex: "1500", "2400 12", "R$ 350,00").
+func ParseSimulationCommand(args string) (float64, int, error) {
+	raw := strings.TrimSpace(args)
+	if raw == "" {
+		return 0, 0, errors.New("Argumentos obrigatórios ausentes. Envie no formato: /simular <valor> [parcelas]")
+	}
+
+	words := strings.Fields(raw)
+	if len(words) == 0 {
+		return 0, 0, errors.New("Argumentos obrigatórios ausentes. Envie no formato: /simular <valor> [parcelas]")
+	}
+
+	// Filtra tokens para separar valor e parcelas
+	var valueToken string
+	var parcelToken string
+
+	for _, w := range words {
+		if strings.EqualFold(w, "R$") {
+			continue
+		}
+		if valueToken == "" {
+			valueToken = w
+		} else if parcelToken == "" {
+			parcelToken = w
+		}
+	}
+
+	if valueToken == "" {
+		return 0, 0, errors.New("Valor monetário inválido ou ausente.")
+	}
+
+	amount, err := ParseMoney(valueToken)
+	if err != nil {
+		return 0, 0, errors.New("Valor monetário inválido. Envie um número positivo (ex: 1500 ou 1500,00).")
+	}
+
+	installments := 1
+	if parcelToken != "" {
+		parsedInst, err := strconv.Atoi(parcelToken)
+		if err != nil || parsedInst <= 0 {
+			return 0, 0, errors.New("Número de parcelas inválido. Informe um número inteiro positivo (ex: 12).")
+		}
+		if parsedInst > 48 {
+			return 0, 0, errors.New("Número máximo de parcelas suportado é 48.")
+		}
+		installments = parsedInst
+	}
+
+	return amount, installments, nil
+}

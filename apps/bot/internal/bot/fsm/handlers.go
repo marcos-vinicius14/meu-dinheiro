@@ -58,7 +58,7 @@ func (h *OnboardingHandler) HandleStart(ctx context.Context, f *FSM, sess *Sessi
 			userCtx.EmergencyFund.ProgressPercent,
 			userCtx.TotalNetWorth,
 		)
-		f.Reply(sess.ChatID, dashboardMsg)
+		f.ReplyWithReplyMarkup(sess.ChatID, dashboardMsg, PersistentMenuKeyboard())
 		return nil
 	}
 
@@ -367,7 +367,7 @@ func (h *OnboardingHandler) finalizeOnboarding(ctx context.Context, f *FSM, sess
 		resp.TotalNetWorth,
 	)
 
-	f.Reply(sess.ChatID, reportMsg)
+	f.ReplyWithReplyMarkup(sess.ChatID, reportMsg, PersistentMenuKeyboard())
 	return nil
 }
 
@@ -384,6 +384,10 @@ func formatHealthBadge(status string) string {
 		return "🟢 SAUDÁVEL"
 	case HealthStatusRestricted:
 		return "🟡 RESTRITO"
+	case "ATTENTION":
+		return "🟡 ATENÇÃO"
+	case "DEFICIT":
+		return "🔴 DÉFICIT"
 	case HealthStatusDeficitRisk, HealthStatusDeficitWarning:
 		return "🔴 RISCO DE DÉFICIT"
 	default:

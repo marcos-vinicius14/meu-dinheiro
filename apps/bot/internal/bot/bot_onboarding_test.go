@@ -52,6 +52,19 @@ func (m *mockSender) LastText() string {
 	return ""
 }
 
+func (m *mockSender) LastMessage() (tgbotapi.MessageConfig, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if len(m.sentMessages) == 0 {
+		return tgbotapi.MessageConfig{}, false
+	}
+	last := m.sentMessages[len(m.sentMessages)-1]
+	if msg, ok := last.(tgbotapi.MessageConfig); ok {
+		return msg, true
+	}
+	return tgbotapi.MessageConfig{}, false
+}
+
 func TestBot_OnboardingIntegration_E2E(t *testing.T) {
 	var mu sync.Mutex
 	var lastReq *client.OnboardingRequest
@@ -359,9 +372,9 @@ func TestBot_OnboardingIntegration_WithInvestments(t *testing.T) {
 	sendUpdate(tgbotapi.Update{
 		UpdateID: 5,
 		CallbackQuery: &tgbotapi.CallbackQuery{
-			ID:   "cb_fix",
-			From: &tgbotapi.User{ID: telegramID, FirstName: "Arthur"},
-			Data: string(fsm.ActionFinishFixedExpenses),
+			ID:      "cb_fix",
+			From:    &tgbotapi.User{ID: telegramID, FirstName: "Arthur"},
+			Data:    string(fsm.ActionFinishFixedExpenses),
 			Message: &tgbotapi.Message{Chat: &tgbotapi.Chat{ID: chatID}},
 		},
 	})
@@ -369,9 +382,9 @@ func TestBot_OnboardingIntegration_WithInvestments(t *testing.T) {
 	sendUpdate(tgbotapi.Update{
 		UpdateID: 6,
 		CallbackQuery: &tgbotapi.CallbackQuery{
-			ID:   "cb_f12",
-			From: &tgbotapi.User{ID: telegramID, FirstName: "Arthur"},
-			Data: string(fsm.ActionFund12),
+			ID:      "cb_f12",
+			From:    &tgbotapi.User{ID: telegramID, FirstName: "Arthur"},
+			Data:    string(fsm.ActionFund12),
 			Message: &tgbotapi.Message{Chat: &tgbotapi.Chat{ID: chatID}},
 		},
 	})
@@ -388,9 +401,9 @@ func TestBot_OnboardingIntegration_WithInvestments(t *testing.T) {
 	sendUpdate(tgbotapi.Update{
 		UpdateID: 8,
 		CallbackQuery: &tgbotapi.CallbackQuery{
-			ID:   "cb_add_inv",
-			From: &tgbotapi.User{ID: telegramID, FirstName: "Arthur"},
-			Data: string(fsm.ActionAddInvestment),
+			ID:      "cb_add_inv",
+			From:    &tgbotapi.User{ID: telegramID, FirstName: "Arthur"},
+			Data:    string(fsm.ActionAddInvestment),
 			Message: &tgbotapi.Message{Chat: &tgbotapi.Chat{ID: chatID}},
 		},
 	})
@@ -407,9 +420,9 @@ func TestBot_OnboardingIntegration_WithInvestments(t *testing.T) {
 	sendUpdate(tgbotapi.Update{
 		UpdateID: 10,
 		CallbackQuery: &tgbotapi.CallbackQuery{
-			ID:   "cb_finish_inv",
-			From: &tgbotapi.User{ID: telegramID, FirstName: "Arthur"},
-			Data: string(fsm.ActionFinishInvestments),
+			ID:      "cb_finish_inv",
+			From:    &tgbotapi.User{ID: telegramID, FirstName: "Arthur"},
+			Data:    string(fsm.ActionFinishInvestments),
 			Message: &tgbotapi.Message{Chat: &tgbotapi.Chat{ID: chatID}},
 		},
 	})
@@ -537,9 +550,9 @@ func TestBot_OnboardingIntegration_APIErrorResilience(t *testing.T) {
 	update := tgbotapi.Update{
 		UpdateID: 30,
 		CallbackQuery: &tgbotapi.CallbackQuery{
-			ID:   "cb_err",
-			From: &tgbotapi.User{ID: telegramID, FirstName: "Renato"},
-			Data: string(fsm.ActionSkipInvestments),
+			ID:      "cb_err",
+			From:    &tgbotapi.User{ID: telegramID, FirstName: "Renato"},
+			Data:    string(fsm.ActionSkipInvestments),
 			Message: &tgbotapi.Message{Chat: &tgbotapi.Chat{ID: chatID}},
 		},
 	}
@@ -581,9 +594,9 @@ func TestBot_OnboardingIntegration_CallbackReplayProtection(t *testing.T) {
 	update := tgbotapi.Update{
 		UpdateID: 40,
 		CallbackQuery: &tgbotapi.CallbackQuery{
-			ID:   "cb_replay",
-			From: &tgbotapi.User{ID: telegramID, FirstName: "Lucia"},
-			Data: string(fsm.ActionFund6),
+			ID:      "cb_replay",
+			From:    &tgbotapi.User{ID: telegramID, FirstName: "Lucia"},
+			Data:    string(fsm.ActionFund6),
 			Message: &tgbotapi.Message{Chat: &tgbotapi.Chat{ID: chatID}},
 		},
 	}

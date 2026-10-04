@@ -18,11 +18,12 @@ type TelegramSender interface {
 
 // FSM é o motor da máquina de estados do onboarding no Telegram Bot.
 type FSM struct {
-	store   *SessionStore
-	sender  TelegramSender
-	client  *client.APIClient
-	logger  *slog.Logger
-	handler StepHandler
+	store          *SessionStore
+	sender         TelegramSender
+	client         *client.APIClient
+	logger         *slog.Logger
+	handler        StepHandler
+	checkinHandler *CheckinHandler
 }
 
 // StepHandler define a interface para tratamento das mensagens e callbacks de cada estado do diálogo.
@@ -45,6 +46,11 @@ func NewFSM(store *SessionStore, sender TelegramSender, client *client.APIClient
 // SetStepHandler registra o tratador das etapas de onboarding.
 func (f *FSM) SetStepHandler(h StepHandler) {
 	f.handler = h
+}
+
+// SetCheckinHandler registra o tratador do diálogo de check-in diário.
+func (f *FSM) SetCheckinHandler(h *CheckinHandler) {
+	f.checkinHandler = h
 }
 
 // GetStore expõe o SessionStore associado.
@@ -75,14 +81,19 @@ func (f *FSM) Reply(chatID int64, text string) {
 
 // ReplyWithKeyboard envia uma mensagem com teclado inline para o chat especificado.
 func (f *FSM) ReplyWithKeyboard(chatID int64, text string, keyboard tgbotapi.InlineKeyboardMarkup) {
+	f.ReplyWithReplyMarkup(chatID, text, keyboard)
+}
+
+// ReplyWithReplyMarkup envia uma mensagem com qualquer markup (ReplyKeyboardMarkup, InlineKeyboardMarkup, etc.)
+func (f *FSM) ReplyWithReplyMarkup(chatID int64, text string, markup interface{}) {
 	if f.sender == nil {
 		return
 	}
 	msg := tgbotapi.NewMessage(chatID, text)
 	msg.ParseMode = tgbotapi.ModeMarkdown
-	msg.ReplyMarkup = keyboard
+	msg.ReplyMarkup = markup
 	if _, err := f.sender.Send(msg); err != nil {
-		f.logger.Error("falha ao enviar teclado telegram", "chat_id", chatID, "error", err)
+		f.logger.Error("falha ao enviar markup telegram", "chat_id", chatID, "error", err)
 		if strings.Contains(err.Error(), "can't parse entities") {
 			msg.ParseMode = ""
 			_, _ = f.sender.Send(msg)
@@ -100,12 +111,29 @@ func (f *FSM) HandleUpdate(ctx context.Context, update *tgbotapi.Update) (bool, 
 	// 1. Tratamento de CallbackQuery (botões inline)
 	if update.CallbackQuery != nil {
 		cb := update.CallbackQuery
+		// Callbacks de simulação e gastos são delegados ao bot
+		if strings.HasPrefix(cb.Data, "gasto_") || strings.HasPrefix(cb.Data, "sim_") {
+			return false, nil
+		}
+
 		if f.sender != nil {
 			_, _ = f.sender.Request(tgbotapi.NewCallback(cb.ID, ""))
 		}
 
 		user := cb.From
 		sess, exists := f.store.Get(user.ID)
+
+		// Roteamento específico para Check-in
+		if strings.HasPrefix(cb.Data, "checkin_") {
+			if exists && f.checkinHandler != nil {
+				f.store.Touch(user.ID)
+				err := f.checkinHandler.HandleStepCallback(ctx, f, sess, cb.Data)
+				return true, err
+			}
+			f.Reply(cb.Message.Chat.ID, "Sua sessão de check-in expirou. Clique em '📝 Check-in' ou digite /checkin para reiniciar.")
+			return true, nil
+		}
+
 		if !exists || sess.CurrentState == StateIdle {
 			f.Reply(cb.Message.Chat.ID, "Sua sessão de onboarding expirou ou não está ativa. Digite /start para iniciar.")
 			return true, nil
@@ -139,11 +167,29 @@ func (f *FSM) HandleUpdate(ctx context.Context, update *tgbotapi.Update) (bool, 
 
 	if text == "/cancelar" {
 		f.store.Delete(user.ID)
-		f.Reply(msg.Chat.ID, "❌ Onboarding cancelado. Você pode reiniciar a qualquer momento enviando /start.")
+		f.Reply(msg.Chat.ID, "❌ Operação/Onboarding cancelado. Envie /s2s para ver seu saldo seguro ou /start para o menu principal.")
 		return true, nil
 	}
 
 	sess, exists := f.store.Get(user.ID)
+
+	if text == "/checkin" || text == ButtonCheckin {
+		if !exists {
+			sess = f.store.GetOrCreate(user.ID, msg.Chat.ID, user.FirstName, user.UserName)
+		} else {
+			sess.ChatID = msg.Chat.ID
+			sess.FirstName = user.FirstName
+			sess.Username = user.UserName
+			sess.CurrentState = StateIdle
+			f.store.Touch(user.ID)
+		}
+
+		if f.checkinHandler != nil {
+			err := f.checkinHandler.StartCheckin(ctx, f, sess)
+			return true, err
+		}
+		return true, nil
+	}
 
 	if text == "/start" {
 		if !exists {
@@ -166,6 +212,10 @@ func (f *FSM) HandleUpdate(ctx context.Context, update *tgbotapi.Update) (bool, 
 
 	if exists && sess.CurrentState != StateIdle {
 		f.store.Touch(user.ID)
+		if strings.HasPrefix(string(sess.CurrentState), "CHECKIN_") && f.checkinHandler != nil {
+			err := f.checkinHandler.HandleStepMessage(ctx, f, sess, text)
+			return true, err
+		}
 		if f.handler != nil {
 			err := f.handler.HandleStepMessage(ctx, f, sess, text)
 			return true, err

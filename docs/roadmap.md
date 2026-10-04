@@ -19,7 +19,7 @@ graph TD
     M0["Milestone 0: Criação & Configuração do Bot (✅ Concluído)"] --> M1
     subgraph V001 ["🚀 Versão 0.0.1 (MVP - Core Loop)"]
         M1["Milestone 1: Backend de Investimentos & APIs do Bot (✅ Concluído)"] --> M2["Milestone 2: Onboarding Conversacional no Telegram (✅ Concluído)"]
-        M2 --> M3["Milestone 3: Comandos do Motor Preditivo & S2S no Chat (Bot)"]
+        M2 --> M3["Milestone 3: Comandos do Motor Preditivo & S2S no Chat (Bot) (✅ Concluído)"]
     end
     M3 --> M4["Milestone 4: Gestão de Ativos e Carteira de Ações (Bot) — v0.1.0"]
     M4 --> M5["Milestone 5: Notificações Proativas & Alertas de Risco (Bot/Worker) — v0.2.0"]
@@ -128,25 +128,29 @@ graph TD
 
 ---
 
-### 🟢 Milestone 3: Comandos do Motor Preditivo & Operação Diária `[v0.0.1]`
+### ✅ Milestone 3: Comandos do Motor Preditivo & Operação Diária `[v0.0.1]`
 **Foco:** Integrar todos os superpoderes do motor matemático diretamente no chat do Telegram.
 
-- [ ] **Comando `/s2s`**:
+- [x] **Comando `/s2s`**:
   - Consulta o Saldo Seguro Diário em tempo real.
   - Exibe dias restantes do ciclo, limite flexível diário e badge de saúde financeira (`🟢 SAUDÁVEL`, `🟡 RESTRITO`, `🔴 RISCO DE DÉFICIT`).
-- [ ] **Comando `/gasto <valor> <descrição>`**:
-  - Exemplo: `/gasto 34.90 Almoço` ou `/gasto 120 Mercado`.
-  - Cria transação do tipo `EXPENSE` e retorna o impacto imediato no S2S:
-    > *"Gasto de R$ 34,90 registrado em Alimentação. Seu novo S2S para hoje é **R$ 78,12**."*
-- [ ] **Comando `/simular <valor> [parcelas]`**:
-  - Exemplo: `/simular 2400 12` (Compra de R$ 2.400 em 12x).
+  - Ativa o Teclado Persistente 2x2 (`/s2s`, `/gasto`, `/simular`, `/checkin`).
+- [x] **Comando `/gasto <valor> [descrição]`**:
+  - Exemplo: `/gasto 34.90 Almoço` ou `/gasto 120`.
+  - Exibe botões inline dinâmicos com as categorias do usuário (Moradia, Alimentação, etc.).
+  - Cria transação do tipo `FLEXIBLE_EXPENSE` e retorna o recibo com o impacto imediato no S2S:
+    > *"💸 Gasto de R$ 34,90 registrado em Alimentação. Seu novo S2S para hoje é **R$ 78,12**."*
+- [x] **Comando `/renda <valor> [descrição]` (e alias `/receita`)**:
+  - Exemplo: `/renda 5000 Salário` ou `/receita 350 Freelance`.
+  - Registra transação `INCOME` confirmada com recalibração imediata do saldo líquido e do S2S para cima.
+- [x] **Comando `/simular <valor> [parcelas]`**:
+  - Exemplo: `/simular 2400 12` (Compra de R$ 2.400 em 12x) ou `/simular 350` (à vista).
   - Executa o simulador *what-if* de 1 a 12 ciclos futuros na API.
-  - Responde ao usuário com diagnóstico preditivo:
-    > *"🔮 **Simulação de Compra: R$ 2.400 em 12x de R$ 200,00**\n\n"*
-    > *"⚠️ **Atenção:** Essa compra reduzirá seu S2S de R$ 85/dia para R$ 51/dia e gerará risco de déficit no **Ciclo 5 (Maio)**.\n"*
-    > *"Recomendação: Aguarde a liquidação de parcelas anteriores antes de assumir esse novo parcelamento."*
-- [ ] **Comando `/checkin`**:
-  - Wizard interativo para conciliar o saldo do dia e registrar o snapshot diário em `tb_check_in_snapshots`.
+  - Responde ao usuário com diagnóstico preditivo de impacto, ciclo mais crítico e recomendação.
+  - Inclui botão inline de 1 clique: `[ ✅ Lançar Compra Agora ]` para efetivar imediatamente o parcelamento no banco.
+- [x] **Comando `/checkin`**:
+  - Wizard interativo via FSM para conciliar gastos não rastreados do dia e saldo bancário real.
+  - Persistência atômica e idempotente do snapshot diário em `tb_check_in_snapshots`.
 
 ---
 
@@ -207,8 +211,8 @@ graph TD
 |---|---|---|---|---|
 | **`v0.0.1`** | **M0** | Criação, Token, Comandos e Webhook do Bot | Telegram / `apps/bot` | ✅ Concluído |
 | **`v0.0.1`** *(MVP Core Loop)* | **M1** | Backend de Investimentos & APIs Bot | `apps/api` | ✅ Concluído |
-| **`v0.0.1`** *(MVP Core Loop)* | **M2** | Onboarding Conversacional & Saldo Inicial | `apps/bot` | ⏳ Planejado |
-| **`v0.0.1`** *(MVP Core Loop)* | **M3** | Comandos S2S, /gasto e Simulador What-If | `apps/bot` | ⏳ Planejado |
+| **`v0.0.1`** *(MVP Core Loop)* | **M2** | Onboarding Conversacional & Saldo Inicial | `apps/bot` | ✅ Concluído |
+| **`v0.0.1`** *(MVP Core Loop)* | **M3** | Comandos S2S, /gasto, /simular, /checkin e /renda | `apps/bot` | ✅ Concluído |
 | **`v0.1.0`** | **M4** | Comando `/investimento` & Carteira de Ações | `apps/bot` | ⏳ Planejado |
 | **`v0.2.0`** | **M5** | Notificações Proativas & Worker S2S | `apps/bot` + Worker | ⏳ Planejado |
 | **`v1.0.0`** | **M6** | Dashboard Web Completo & Gráficos 12 Meses | `apps/web` | ⏳ Futuro |
