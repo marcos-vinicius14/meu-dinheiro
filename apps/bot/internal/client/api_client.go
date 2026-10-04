@@ -163,6 +163,70 @@ func (c *APIClient) AddInvestment(ctx context.Context, req AddInvestmentRequest)
 	return &resp, nil
 }
 
+// ListInvestments consulta a carteira consolidada de ativos, saldo líquido e patrimônio do usuário.
+func (c *APIClient) ListInvestments(ctx context.Context, telegramID int64) (*ListInvestmentsResponse, error) {
+	url := fmt.Sprintf("%s/internal/investments?telegram_id=%d", c.baseURL, telegramID)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("criar requisicao http: %w", err)
+	}
+
+	httpReq.Header.Set("X-Internal-Secret", c.internalKey)
+
+	res, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("falha ao conectar com api: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(res.Body)
+		return nil, fmt.Errorf("erro da api (status %d): %s", res.StatusCode, string(body))
+	}
+
+	var resp ListInvestmentsResponse
+	if err := json.NewDecoder(res.Body).Decode(&resp); err != nil {
+		return nil, fmt.Errorf("decodificar resposta: %w", err)
+	}
+
+	return &resp, nil
+}
+
+// SellInvestment realiza a baixa parcial ou total de um ativo na carteira do usuário.
+func (c *APIClient) SellInvestment(ctx context.Context, req SellInvestmentRequest) (*SellInvestmentResponse, error) {
+	data, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("serializar venda: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/internal/investments/sell", c.baseURL)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("criar requisicao http: %w", err)
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("X-Internal-Secret", c.internalKey)
+
+	res, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("falha ao conectar com api: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(res.Body)
+		return nil, fmt.Errorf("erro da api (status %d): %s", res.StatusCode, string(body))
+	}
+
+	var resp SellInvestmentResponse
+	if err := json.NewDecoder(res.Body).Decode(&resp); err != nil {
+		return nil, fmt.Errorf("decodificar resposta: %w", err)
+	}
+
+	return &resp, nil
+}
+
 // QuickExpense registra um gasto diário rápido com recalibração imediata do S2S.
 func (c *APIClient) QuickExpense(ctx context.Context, req QuickExpenseRequest) (*QuickExpenseResponse, error) {
 	data, err := json.Marshal(req)

@@ -16,6 +16,7 @@ make up           # Sobe o banco PostgreSQL 18 local via Docker Compose (compose
 make down         # Para os containers de desenvolvimento
 make up-prd       # Sobe a stack completa de produção (compose.prd.yaml / .env.prd)
 make down-prd     # Para os containers de produção
+make release TAG=v0.1.0  # Cria a tag Git anotada, publica no remoto e aciona deploy no Coolify
 ```
 
 - Docker é obrigatório para rodar os testes de integração (`Testcontainers` sobe `postgres:18-alpine` automaticamente).

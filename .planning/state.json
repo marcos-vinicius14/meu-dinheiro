@@ -11,12 +11,12 @@
     {
       "number": "2",
       "name": "Comandos do Motor Preditivo & Operação Diária",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "number": "3",
       "name": "Gestão de Carteira de Ações no Telegram",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "number": "4",
@@ -31,8 +31,8 @@
   ],
   "next": {
     "command": "/gsd-progress --next",
-    "label": "Advance to the next step",
-    "reason": "Phase 2 of 5 · executing"
+    "label": "Advance to the next step (plan phase 4)",
+    "reason": "Phase 4 of 5 — needs a plan"
   },
-  "updated_at": "2026-10-03T21:40:45.283Z"
+  "updated_at": "2026-10-04T17:58:48.789Z"
 }

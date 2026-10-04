@@ -32,21 +32,21 @@ Funcionalidades planejadas nos marcos subsequentes do roadmap (`v0.1.0`, `v0.2.0
 
 ### Carteira de Ações e Investimentos no Telegram (`v0.1.0` - Milestone 4)
 
-- **INVEST-01**: Usuário adiciona ativos à carteira via `/investimento <TICKER>, <QUANTIDADE> un a <PRECO>`, recalculando o Preço Médio ponderado
-- **INVEST-02**: Usuário consulta a carteira consolidada via `/investimentos` ou `/carteira`, exibindo ativos, quantidades, preço médio e patrimônio investido
-- **INVEST-03**: Usuário realiza venda ou redução de posição via `/venda <TICKER> <QUANTIDADE> a <PRECO>`
+- [x] **INVEST-01**: Usuário adiciona ativos à carteira via `/investimento <TICKER>, <QUANTIDADE> un a <PRECO>`, recalculando o Preço Médio ponderado
+- [x] **INVEST-02**: Usuário consulta a carteira consolidada via `/investimentos` ou `/carteira`, exibindo ativos, quantidades, preço médio e patrimônio investido
+- [x] **INVEST-03**: Usuário realiza venda ou redução de posição via `/venda <TICKER> <QUANTIDADE> a <PRECO>`
 
 ### Notificações Proativas & Alertas de Risco (`v0.2.0` - Milestone 5)
 
-- **NOTIF-01**: Worker envia notificação matinal de "Bom Dia" às 08:00 com o S2S do dia e dias restantes
-- **NOTIF-02**: Sistema dispara alerta proativo imediato se um gasto registrado degradar a saúde do ciclo para `RESTRICTED` ou `DEFICIT_RISK`
-- **NOTIF-03**: Lembrete noturno amigável às 21:00 convidando para fechar o dia com o `/checkin`
+- [ ] **NOTIF-01**: Worker envia notificação matinal de "Bom Dia" às 08:00 com o S2S do dia e dias restantes
+- [ ] **NOTIF-02**: Sistema dispara alerta proativo imediato se um gasto registrado degradar a saúde do ciclo para `RESTRICTED` ou `DEFICIT_RISK`
+- [ ] **NOTIF-03**: Lembrete noturno amigável às 21:00 convidando para fechar o dia com o `/checkin`
 
 ### Dashboard Web Completo & Analytics (`v1.0.0` - Milestone 6)
 
-- **WEB-01**: Usuário visualiza gráfico interativo da curva de liquidez e parcelamentos nos 12 ciclos futuros no frontend Vue 3
-- **WEB-02**: Usuário acessa painel gráfico de investimentos com alocação percentual por ativo
-- **WEB-03**: Usuário gerencia contas bancárias e visualiza extrato analítico completo de transações e bundles parcelados
+- [ ] **WEB-01**: Usuário visualiza gráfico interativo da curva de liquidez e parcelamentos nos 12 ciclos futuros no frontend Vue 3
+- [ ] **WEB-02**: Usuário acessa painel gráfico de investimentos com alocação percentual por ativo
+- [ ] **WEB-03**: Usuário gerencia contas bancárias e visualiza extrato analítico completo de transações e bundles parcelados
 
 ---
 
@@ -64,21 +64,30 @@ Funcionalidades planejadas nos marcos subsequentes do roadmap (`v0.1.0`, `v0.2.0
 
 ## Traceability
 
-Mapeamento de cobertura entre requisitos da v1 e as fases do Roadmap.
+Mapeamento de cobertura entre requisitos e as fases do Roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ONBD-01 | Phase 1 | Pending |
-| ONBD-02 | Phase 1 | Pending |
-| ONBD-03 | Phase 1 | Pending |
-| ONBD-04 | Phase 1 | Pending |
-| ONBD-05 | Phase 1 | Pending |
-| ONBD-06 | Phase 1 | Pending |
-| ONBD-07 | Phase 1 | Pending |
-| PRED-01 | Phase 2 | Pending |
-| PRED-02 | Phase 2 | Pending |
-| PRED-03 | Phase 2 | Pending |
-| PRED-04 | Phase 2 | Pending |
+| ONBD-01 | Phase 1 | Complete |
+| ONBD-02 | Phase 1 | Complete |
+| ONBD-03 | Phase 1 | Complete |
+| ONBD-04 | Phase 1 | Complete |
+| ONBD-05 | Phase 1 | Complete |
+| ONBD-06 | Phase 1 | Complete |
+| ONBD-07 | Phase 1 | Complete |
+| PRED-01 | Phase 2 | Complete |
+| PRED-02 | Phase 2 | Complete |
+| PRED-03 | Phase 2 | Complete |
+| PRED-04 | Phase 2 | Complete |
+| INVEST-01 | Phase 3 | Complete |
+| INVEST-02 | Phase 3 | Complete |
+| INVEST-03 | Phase 3 | Complete |
+| NOTIF-01 | Phase 4 | Pending |
+| NOTIF-02 | Phase 4 | Pending |
+| NOTIF-03 | Phase 4 | Pending |
+| WEB-01 | Phase 5 | Pending |
+| WEB-02 | Phase 5 | Pending |
+| WEB-03 | Phase 5 | Pending |
 
 **Coverage:**
 - v1 requirements: 11 total

@@ -126,16 +126,47 @@ func inferCategoryName(desc string) string {
 }
 
 var (
-	tickerRegex   = regexp.MustCompile(`^[A-Z0-9]{4,6}$`)
+	tickerRegex   = regexp.MustCompile(`^[A-Z0-9.\-_]{1,12}$`)
 	letterCommaRe = regexp.MustCompile(`([A-Za-z]),`)
 	commaSpaceRe  = regexp.MustCompile(`,\s+`)
 )
+
+func parseNumberToken(tok string) (float64, bool) {
+	s := strings.TrimSpace(tok)
+	s = strings.ReplaceAll(s, "R$", "")
+	s = strings.ReplaceAll(s, "r$", "")
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0, false
+	}
+
+	hasComma := strings.Contains(s, ",")
+	hasDot := strings.Contains(s, ".")
+
+	if hasComma && hasDot {
+		if strings.LastIndex(s, ",") > strings.LastIndex(s, ".") {
+			s = strings.ReplaceAll(s, ".", "")
+			s = strings.ReplaceAll(s, ",", ".")
+		} else {
+			s = strings.ReplaceAll(s, ",", "")
+		}
+	} else if hasComma {
+		s = strings.ReplaceAll(s, ",", ".")
+	}
+
+	val, err := strconv.ParseFloat(s, 64)
+	if err != nil || math.IsNaN(val) || math.IsInf(val, 0) {
+		return 0, false
+	}
+	return val, true
+}
 
 // ParseInvestment extrai ticker, quantidade e preço de strings flexíveis.
 // Exemplos aceitos:
 // - "ALUP11 10 42.23"
 // - "ALUP11, 10 un a 42.23"
 // - "PETR4 100 cotas a 38,50"
+// - "TD-SELIC 1 14500.00"
 func ParseInvestment(input string) (*InvestmentData, error) {
 	raw := strings.TrimSpace(input)
 	if raw == "" {
@@ -180,6 +211,67 @@ func ParseInvestment(input string) (*InvestmentData, error) {
 		Quantity:     qty,
 		AveragePrice: price,
 	}, nil
+}
+
+// ParseSaleCommand extrai ticker, quantidade e preço opcional para o comando /venda (ou /vender).
+// Exemplos aceitos:
+// - "PETR4 30" -> ticker="PETR4", qty=30, price=nil
+// - "PETR4 30 a 41.50" -> ticker="PETR4", qty=30, price=41.50
+// - "PETR4, 30 un a 41,50" -> ticker="PETR4", qty=30, price=41.50
+// - "TD-SELIC 1 a 14500.00" -> ticker="TD-SELIC", qty=1, price=14500.00
+func ParseSaleCommand(args string) (string, float64, *float64, error) {
+	raw := strings.TrimSpace(args)
+	if raw == "" {
+		return "", 0, nil, errors.New("Argumentos obrigatórios ausentes. Envie no formato: /venda <TICKER> <QUANTIDADE> [a <PREÇO>]")
+	}
+
+	cleaned := letterCommaRe.ReplaceAllString(raw, "$1 ")
+	cleaned = commaSpaceRe.ReplaceAllString(cleaned, " ")
+	tokens := strings.Fields(cleaned)
+
+	var ticker string
+	var nums []float64
+
+	for _, tok := range tokens {
+		lower := strings.ToLower(tok)
+		if lower == "un" || lower == "unidades" || lower == "cotas" || lower == "cota" || lower == "a" || lower == "de" || lower == "r$" {
+			continue
+		}
+
+		if val, ok := parseNumberToken(tok); ok {
+			nums = append(nums, val)
+			continue
+		}
+
+		upper := strings.ToUpper(tok)
+		if tickerRegex.MatchString(upper) && ticker == "" {
+			ticker = upper
+		}
+	}
+
+	if ticker == "" {
+		return "", 0, nil, errors.New("Código do ativo (ticker) não informado ou inválido.")
+	}
+
+	if len(nums) == 0 {
+		return "", 0, nil, errors.New("Informe a quantidade a ser vendida. Exemplo: /venda TICKER QUANTIDADE [a PREÇO]")
+	}
+
+	qty := nums[0]
+	if qty <= 0 {
+		return "", 0, nil, errors.New("Quantidade deve ser maior que zero.")
+	}
+
+	var price *float64
+	if len(nums) >= 2 {
+		priceVal := nums[1]
+		if priceVal < 0 {
+			return "", 0, nil, errors.New("Preço de venda não pode ser negativo.")
+		}
+		price = &priceVal
+	}
+
+	return ticker, qty, price, nil
 }
 
 // ParseExpenseCommand interpreta os argumentos do comando /gasto (ex: "34.90 Almoço", "120 Mercado", "Almoço 34.90").

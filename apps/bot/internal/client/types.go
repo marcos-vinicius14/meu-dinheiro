@@ -143,6 +143,14 @@ type UserFinancialContext struct {
 
 // --- INVESTIMENTOS ---
 
+type InvestmentItem struct {
+	ID           string    `json:"id"`
+	Ticker       string    `json:"ticker"`
+	Quantity     FlexFloat `json:"quantity"`
+	AveragePrice float64   `json:"average_price"`
+	TotalCost    float64   `json:"total_cost"`
+}
+
 type AddInvestmentRequest struct {
 	TelegramID int64   `json:"telegram_id"`
 	Ticker     string  `json:"ticker"`
@@ -151,15 +159,34 @@ type AddInvestmentRequest struct {
 }
 
 type AddInvestmentResponse struct {
-	Investment struct {
-		ID           string    `json:"id"`
-		Ticker       string    `json:"ticker"`
-		Quantity     FlexFloat `json:"quantity"`
-		AveragePrice float64   `json:"average_price"`
-		TotalCost    float64   `json:"total_cost"`
-	} `json:"investment"`
-	TotalInvested float64 `json:"total_invested"`
-	TotalNetWorth float64 `json:"total_net_worth"`
+	Investment    InvestmentItem `json:"investment"`
+	TotalInvested float64        `json:"total_invested"`
+	TotalNetWorth float64        `json:"total_net_worth"`
+}
+
+type ListInvestmentsResponse struct {
+	Investments        []InvestmentItem `json:"investments"`
+	TotalInvested      float64          `json:"total_invested"`
+	TotalLiquidBalance float64          `json:"total_liquid_balance"`
+	TotalNetWorth      float64          `json:"total_net_worth"`
+}
+
+type SellInvestmentRequest struct {
+	TelegramID int64   `json:"telegram_id"`
+	Ticker     string  `json:"ticker"`
+	Quantity   float64 `json:"quantity"`
+}
+
+type SellInvestmentResponse struct {
+	Investment         *InvestmentItem `json:"investment,omitempty"`
+	Ticker             string          `json:"ticker"`
+	SoldQuantity       FlexFloat       `json:"sold_quantity"`
+	RemainingQuantity  FlexFloat       `json:"remaining_quantity"`
+	AveragePrice       float64         `json:"average_price"`
+	IsClosed           bool            `json:"is_closed"`
+	TotalInvested      float64         `json:"total_invested"`
+	TotalLiquidBalance float64         `json:"total_liquid_balance"`
+	TotalNetWorth      float64         `json:"total_net_worth"`
 }
 
 // --- GASTOS RÁPIDOS ---
