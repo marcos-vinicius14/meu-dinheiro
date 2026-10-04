@@ -27,7 +27,7 @@ func TestConfigLoadDefaults(t *testing.T) {
 	assert.NotNil(t, cfg)
 	assert.Empty(t, cfg.WebhookURL)
 	assert.Empty(t, cfg.WebhookSecretToken)
-	assert.Equal(t, "8081", cfg.WebhookPort)
+	assert.Equal(t, "8443", cfg.WebhookPort)
 	assert.Equal(t, "/webhook", cfg.WebhookPath)
 	assert.Equal(t, "http://localhost:8080", cfg.APIBaseURL)
 }

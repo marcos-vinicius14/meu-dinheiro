@@ -15,6 +15,8 @@ type Config struct {
 	WebhookSecretToken string
 	WebhookPort        string
 	WebhookPath        string
+	WebhookCertPath    string
+	WebhookKeyPath     string
 }
 
 func Load() *Config {
@@ -34,11 +36,16 @@ func Load() *Config {
 	webhookSecretToken := strings.TrimSpace(os.Getenv("WEBHOOK_SECRET_TOKEN"))
 
 	webhookPort := strings.TrimSpace(os.Getenv("WEBHOOK_PORT"))
+	if webhookPort == "" && webhookURL != "" {
+		if parsed, err := url.Parse(webhookURL); err == nil && parsed.Port() != "" {
+			webhookPort = parsed.Port()
+		}
+	}
 	if webhookPort == "" {
 		webhookPort = strings.TrimSpace(os.Getenv("PORT"))
 	}
 	if webhookPort == "" {
-		webhookPort = "8081"
+		webhookPort = "8443"
 	}
 
 	webhookPath := strings.TrimSpace(os.Getenv("WEBHOOK_PATH"))
@@ -69,6 +76,8 @@ func Load() *Config {
 		WebhookSecretToken: webhookSecretToken,
 		WebhookPort:        webhookPort,
 		WebhookPath:        webhookPath,
+		WebhookCertPath:    strings.TrimSpace(os.Getenv("WEBHOOK_CERT_PATH")),
+		WebhookKeyPath:     strings.TrimSpace(os.Getenv("WEBHOOK_KEY_PATH")),
 	}
 }
 
