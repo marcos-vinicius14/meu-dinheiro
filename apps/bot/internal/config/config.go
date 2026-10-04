@@ -2,6 +2,7 @@ package config
 
 import (
 	"bufio"
+	"fmt"
 	"net/url"
 	"os"
 	"strings"
@@ -24,7 +25,11 @@ func Load() *Config {
 
 	apiBaseURL := os.Getenv("API_BASE_URL")
 	if apiBaseURL == "" {
-		apiBaseURL = "http://localhost:8080"
+		port := os.Getenv("PORT")
+		if port == "" {
+			port = "8081"
+		}
+		apiBaseURL = fmt.Sprintf("http://api:%s", port)
 	}
 
 	internalAPIKey := os.Getenv("INTERNAL_API_KEY")
