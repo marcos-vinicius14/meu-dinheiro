@@ -27,6 +27,9 @@ func main() {
 	cfg := config.Load()
 
 	log.Printf("[INFO] Iniciando Meu Dinheiro API na porta :%s...", cfg.Port)
+	if cfg.DatabaseURL == "" {
+		log.Fatalf("[FATAL] Nenhuma URL de banco de dados configurada. Defina DATABASE_URL ou as variáveis POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB.")
+	}
 	log.Printf("[INFO] Database target configurado: %s", database.MaskDatabaseURL(cfg.DatabaseURL))
 
 	// 1. Executa migrações de banco de dados

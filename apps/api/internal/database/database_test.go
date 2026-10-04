@@ -66,4 +66,3 @@ func TestParseConfigWithSpecialCharsPassword(t *testing.T) {
 	assert.Equal(t, uint16(5433), cfg.ConnConfig.Port)
 	assert.Equal(t, "postgres", cfg.ConnConfig.Host)
 }
-

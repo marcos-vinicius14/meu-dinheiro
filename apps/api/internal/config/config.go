@@ -2,6 +2,8 @@ package config
 
 import (
 	"bufio"
+	"fmt"
+	"net/url"
 	"os"
 	"strings"
 )
@@ -19,7 +21,29 @@ func Load() *Config {
 
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
-		dbURL = "postgres://postgres:altere_para_uma_senha_forte_em_producao@postgres:5433/meu_dinheiro?sslmode=disable"
+		user := os.Getenv("POSTGRES_USER")
+		pass := os.Getenv("POSTGRES_PASSWORD")
+		host := os.Getenv("POSTGRES_HOST")
+		if host == "" {
+			host = "postgres"
+		}
+		port := os.Getenv("POSTGRES_PORT")
+		if port == "" {
+			port = "5433"
+		}
+		dbName := os.Getenv("POSTGRES_DB")
+		sslMode := os.Getenv("POSTGRES_SSLMODE")
+		if sslMode == "" {
+			sslMode = "disable"
+		}
+
+		if user != "" && dbName != "" {
+			if pass != "" {
+				dbURL = fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", user, url.PathEscape(pass), host, port, dbName, sslMode)
+			} else {
+				dbURL = fmt.Sprintf("postgres://%s@%s:%s/%s?sslmode=%s", user, host, port, dbName, sslMode)
+			}
+		}
 	}
 
 	port := os.Getenv("PORT")
