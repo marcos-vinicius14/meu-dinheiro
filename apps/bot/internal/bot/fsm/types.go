@@ -6,14 +6,16 @@ import "time"
 type State string
 
 const (
-	StateIdle                       State = "IDLE"
-	StateWaitingBalance             State = "WAITING_BALANCE"
-	StateWaitingCycleDay            State = "WAITING_CYCLE_DAY"
-	StateWaitingFixedExpenses       State = "WAITING_FIXED_EXPENSES"
-	StateWaitingEmergencyFundChoice State = "WAITING_EMERGENCY_FUND_CHOICE"
-	StateWaitingSavingsTarget       State = "WAITING_SAVINGS_TARGET"
-	StateWaitingInvestmentChoice    State = "WAITING_INVESTMENT_CHOICE"
-	StateWaitingInvestmentInput     State = "WAITING_INVESTMENT_INPUT"
+	StateIdle                              State = "IDLE"
+	StateWaitingBalance                    State = "WAITING_BALANCE"
+	StateWaitingCycleDay                   State = "WAITING_CYCLE_DAY"
+	StateWaitingFixedExpenses              State = "WAITING_FIXED_EXPENSES"
+	StateWaitingCurrentEmergencyFundChoice State = "WAITING_CURRENT_EMERGENCY_FUND_CHOICE"
+	StateWaitingCurrentEmergencyFundAmount State = "WAITING_CURRENT_EMERGENCY_FUND_AMOUNT"
+	StateWaitingEmergencyFundChoice        State = "WAITING_EMERGENCY_FUND_CHOICE"
+	StateWaitingSavingsTarget              State = "WAITING_SAVINGS_TARGET"
+	StateWaitingInvestmentChoice           State = "WAITING_INVESTMENT_CHOICE"
+	StateWaitingInvestmentInput            State = "WAITING_INVESTMENT_INPUT"
 
 	// Estados do Check-in Diário Guiado (PRED-04, D-09, D-10, D-11)
 	StateCheckinWaitingExpenses       State = "CHECKIN_WAITING_EXPENSES"
@@ -27,6 +29,8 @@ type Action string
 
 const (
 	ActionFinishFixedExpenses Action = "finish_fixed_expenses"
+	ActionHaveEmergencyFund   Action = "have_emergency_fund"
+	ActionNoEmergencyFund     Action = "no_emergency_fund"
 	ActionFund6               Action = "fund_6"
 	ActionFund12              Action = "fund_12"
 	ActionSkipInvestments     Action = "skip_investments"
@@ -66,6 +70,7 @@ type Session struct {
 	CycleStartDay           int                `json:"cycle_start_day"`
 	FixedExpenses           []FixedExpenseData `json:"fixed_expenses"`
 	EmergencyFundMonths     int                `json:"emergency_fund_months"`
+	CurrentEmergencyFund    float64            `json:"current_emergency_fund"`
 	MonthlyEssentialCost    float64            `json:"monthly_essential_cost"`
 	TargetSavings           float64            `json:"target_savings"`
 	Investments             []InvestmentData   `json:"investments"`

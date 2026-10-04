@@ -28,16 +28,17 @@ type InitialInvestmentInput struct {
 }
 
 type OnboardingRequest struct {
-	TelegramID          int64                    `json:"telegram_id"`
-	FirstName           string                   `json:"first_name"`
-	Username            *string                  `json:"username,omitempty"`
-	InitialBalance      money.Money              `json:"initial_balance"`
-	CycleStartDay       int                      `json:"cycle_start_day"` // 1 a 28, default 1
-	FixedExpenses       []FixedExpenseInput      `json:"fixed_expenses"`
-	EmergencyFundMonths int                      `json:"emergency_fund_months"` // 6 ou 12, default 6
-	TargetSavings       money.Money              `json:"target_savings"`
-	FlexibleBudgetCap   money.Money              `json:"flexible_budget_cap"`
-	Investments         []InitialInvestmentInput `json:"investments"`
+	TelegramID           int64                    `json:"telegram_id"`
+	FirstName            string                   `json:"first_name"`
+	Username             *string                  `json:"username,omitempty"`
+	InitialBalance       money.Money              `json:"initial_balance"`
+	CycleStartDay        int                      `json:"cycle_start_day"` // 1 a 28, default 1
+	FixedExpenses        []FixedExpenseInput      `json:"fixed_expenses"`
+	EmergencyFundMonths  int                      `json:"emergency_fund_months"` // 6 ou 12, default 6
+	CurrentEmergencyFund money.Money              `json:"current_emergency_fund"`
+	TargetSavings        money.Money              `json:"target_savings"`
+	FlexibleBudgetCap    money.Money              `json:"flexible_budget_cap"`
+	Investments          []InitialInvestmentInput `json:"investments"`
 }
 
 type EmergencyFundResponse struct {
@@ -46,6 +47,7 @@ type EmergencyFundResponse struct {
 	Suggested12x         money.Money     `json:"suggested_12x"`
 	ChosenTarget         money.Money     `json:"chosen_target"`
 	ChosenMonths         int             `json:"chosen_months"`
+	CurrentBalance       money.Money     `json:"current_balance"`
 	MonthsCovered        float64         `json:"months_covered"`
 	ProgressPercent      decimal.Decimal `json:"progress_percent"`
 }
@@ -92,6 +94,21 @@ func (h *Handler) handleOnboarding(w http.ResponseWriter, r *http.Request) {
 	accounts, err := h.bankAccountRepo.ListByUserID(ctx, u.ID)
 	if err == nil && len(accounts) > 0 {
 		_, _ = h.bankAccountRepo.Update(ctx, accounts[0].ID, u.ID, accounts[0].Name, req.InitialBalance)
+	}
+
+	// 2.1 Se informou valor inicial de reserva de emergência, provisiona conta Poupança/Reserva
+	if req.CurrentEmergencyFund.IsPositive() {
+		var savingsFound bool
+		for _, acc := range accounts {
+			if strings.EqualFold(acc.Name, "Reserva de Emergência") || acc.Type == "SAVINGS" {
+				_, _ = h.bankAccountRepo.Update(ctx, acc.ID, u.ID, acc.Name, req.CurrentEmergencyFund)
+				savingsFound = true
+				break
+			}
+		}
+		if !savingsFound && len(accounts) < 3 {
+			_, _ = h.bankAccountRepo.Create(ctx, u.ID, "Reserva de Emergência", "SAVINGS", req.CurrentEmergencyFund)
+		}
 	}
 
 	// 3. Processa e persiste despesas fixas essenciais
@@ -171,14 +188,19 @@ func (h *Handler) handleOnboarding(w http.ResponseWriter, r *http.Request) {
 	})
 
 	// 8. Métricas de cobertura de reserva
+	fundBalanceForMetrics := req.CurrentEmergencyFund
+	if fundBalanceForMetrics.IsZero() {
+		fundBalanceForMetrics = liquidBalance
+	}
+
 	var progressPercent decimal.Decimal
 	if !chosenTarget.IsZero() {
-		progressPercent = liquidBalance.PercentOver(chosenTarget)
+		progressPercent = fundBalanceForMetrics.PercentOver(chosenTarget)
 	}
 
 	var monthsCovered float64
 	if !monthlyEssentialCost.IsZero() {
-		monthsCovered, _ = liquidBalance.RatioOver(monthlyEssentialCost).Float64()
+		monthsCovered, _ = fundBalanceForMetrics.RatioOver(monthlyEssentialCost).Float64()
 	}
 
 	portfolio, _ := h.investService.List(ctx, u.ID)
@@ -203,6 +225,7 @@ func (h *Handler) handleOnboarding(w http.ResponseWriter, r *http.Request) {
 			Suggested12x:         suggested12x,
 			ChosenTarget:         chosenTarget,
 			ChosenMonths:         chosenMonths,
+			CurrentBalance:       req.CurrentEmergencyFund,
 			MonthsCovered:        monthsCovered,
 			ProgressPercent:      progressPercent,
 		},

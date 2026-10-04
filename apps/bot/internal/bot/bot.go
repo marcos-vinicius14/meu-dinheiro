@@ -203,13 +203,17 @@ func (b *Bot) handleMessage(ctx context.Context, msg *tgbotapi.Message) {
 
 	switch text {
 	case "/ajuda":
-		helpMsg := "📖 **Ajuda - Meu Dinheiro**\n\n" +
-			"1. **Saldo Seguro (S2S)**: Utilize `/s2s` ou o botão no teclado para ver quanto pode gastar hoje.\n" +
-			"2. **Lançamento de Gastos**: Envie `/gasto <valor> <descrição>` para debitar despesas e ver a recalibração imediata do seu S2S.\n" +
-			"3. **Entrada de Dinheiro**: Envie `/renda <valor> <descrição>` para registrar salários, freelas ou recebimentos e aumentar seu S2S na hora.\n" +
-			"4. **Simulador What-If**: Envie `/simular <valor> [parcelas]` para simular o impacto de compras em até 12 ciclos futuros.\n" +
-			"5. **Check-in Diário**: Envie `/checkin` ou clique no botão para conferir saldo bancário e fechar o dia com chave de ouro.\n" +
-			"6. **Login no Navegador**: Acesse a plataforma web e clique em 'Entrar com Telegram'."
+		helpMsg := "📖 *Ajuda - Meu Dinheiro*\n\n" +
+			"1. *Saldo Seguro (S2S)*: Utilize `/s2s` ou o botão no teclado para ver quanto pode gastar hoje.\n" +
+			"2. *Lançamento de Gastos*: Envie `/gasto <valor> <descrição>` para debitar despesas e ver a recalibração imediata do seu S2S.\n" +
+			"3. *Entrada de Dinheiro*: Envie `/renda <valor> <descrição>` para registrar salários, freelas ou recebimentos e aumentar seu S2S na hora.\n" +
+			"4. *Simulador What-If*: Envie `/simular <valor> [parcelas]` para simular o impacto de compras em até 12 ciclos futuros.\n" +
+			"5. *Check-in Diário*: Envie `/checkin` ou clique no botão para conferir saldo bancário e fechar o dia com chave de ouro.\n" +
+			"6. *Login no Navegador*: Acesse a plataforma web e clique em 'Entrar com Telegram'.\n\n" +
+			"💡 *Como funciona o Cálculo do S2S (Saldo Seguro Diário)?*\n" +
+			"O S2S é o valor que você pode gastar livremente hoje sem comprometer suas contas fixas nem a sua meta de poupança/reserva. O motor calcula sua *Liquidez Disponível* (saldo em conta + receitas previstas até o fim do ciclo − contas fixas − parcelas já assumidas − meta de reserva) e divide essa capacidade flexível restante pelos *dias que ainda restam no ciclo*. Ao registrar qualquer gasto ou receita, o valor diário é recalibrado imediatamente.\n\n" +
+			"🔮 *Como funciona o Cálculo da Simulação What-If?*\n" +
+			"Antes de passar o cartão ou realizar uma compra à vista ou parcelada, o simulador projeta o impacto financeiro em até 12 ciclos futuros. O motor divide o valor pelas parcelas escolhidas, aloca cada parcela no ciclo correspondente e recalcula o S2S projetado e o status de saúde de cada mês. Assim, você identifica com antecedência se a compra causará gargalos ou risco de déficit no futuro."
 		b.replyWithMarkup(chatID, helpMsg, PersistentMenuKeyboard())
 
 	case "/status":

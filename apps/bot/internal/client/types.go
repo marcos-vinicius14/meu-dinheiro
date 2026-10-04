@@ -50,16 +50,17 @@ type InitialInvestmentInput struct {
 }
 
 type OnboardingRequest struct {
-	TelegramID          int64                    `json:"telegram_id"`
-	FirstName           string                   `json:"first_name"`
-	Username            *string                  `json:"username,omitempty"`
-	InitialBalance      float64                  `json:"initial_balance"`
-	CycleStartDay       int                      `json:"cycle_start_day"`
-	FixedExpenses       []FixedExpenseInput      `json:"fixed_expenses"`
-	EmergencyFundMonths int                      `json:"emergency_fund_months"`
-	TargetSavings       float64                  `json:"target_savings"`
-	FlexibleBudgetCap   float64                  `json:"flexible_budget_cap"`
-	Investments         []InitialInvestmentInput `json:"investments"`
+	TelegramID           int64                    `json:"telegram_id"`
+	FirstName            string                   `json:"first_name"`
+	Username             *string                  `json:"username,omitempty"`
+	InitialBalance       float64                  `json:"initial_balance"`
+	CycleStartDay        int                      `json:"cycle_start_day"`
+	FixedExpenses        []FixedExpenseInput      `json:"fixed_expenses"`
+	EmergencyFundMonths  int                      `json:"emergency_fund_months"`
+	CurrentEmergencyFund float64                  `json:"current_emergency_fund,omitempty"`
+	TargetSavings        float64                  `json:"target_savings"`
+	FlexibleBudgetCap    float64                  `json:"flexible_budget_cap"`
+	Investments          []InitialInvestmentInput `json:"investments"`
 }
 
 type CycleResponse struct {
@@ -76,6 +77,7 @@ type EmergencyFundResponse struct {
 	Suggested12x         float64   `json:"suggested_12x"`
 	ChosenTarget         float64   `json:"chosen_target"`
 	ChosenMonths         int       `json:"chosen_months"`
+	CurrentBalance       float64   `json:"current_balance,omitempty"`
 	MonthsCovered        float64   `json:"months_covered"`
 	ProgressPercent      FlexFloat `json:"progress_percent"`
 }

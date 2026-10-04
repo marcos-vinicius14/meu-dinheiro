@@ -83,6 +83,10 @@ func (h *OnboardingHandler) HandleStepMessage(ctx context.Context, f *FSM, sess 
 		return h.handleStepCycleDay(ctx, f, sess, text)
 	case StateWaitingFixedExpenses:
 		return h.handleStepFixedExpenses(ctx, f, sess, text)
+	case StateWaitingCurrentEmergencyFundChoice:
+		return h.handleStepCurrentEmergencyFundChoice(ctx, f, sess, text)
+	case StateWaitingCurrentEmergencyFundAmount:
+		return h.handleStepCurrentEmergencyFundAmount(ctx, f, sess, text)
 	case StateWaitingSavingsTarget:
 		return h.handleStepSavingsTarget(ctx, f, sess, text)
 	case StateWaitingInvestmentInput:
@@ -153,6 +157,35 @@ func (h *OnboardingHandler) handleStepFixedExpenses(ctx context.Context, f *FSM,
 	return nil
 }
 
+func (h *OnboardingHandler) handleStepCurrentEmergencyFundChoice(ctx context.Context, f *FSM, sess *Session, text string) error {
+	trimmed := strings.ToLower(strings.TrimSpace(text))
+	if trimmed == "não" || trimmed == "nao" || trimmed == "0" || trimmed == "zero" || trimmed == "nenhum" {
+		return h.onNoCurrentEmergencyFund(ctx, f, sess)
+	}
+	if trimmed == "sim" {
+		return h.onPromptCurrentEmergencyFundAmount(ctx, f, sess)
+	}
+
+	val, err := ParseMoney(text)
+	if err == nil {
+		sess.CurrentEmergencyFund = val
+		return h.askEmergencyFundGoal(ctx, f, sess, fmt.Sprintf("✅ Reserva atual de **R$ %.2f** registrada!\n\n", val))
+	}
+
+	f.ReplyWithKeyboard(sess.ChatID, "⚠️ Por favor, escolha uma das opções abaixo ou envie o valor já guardado:", makeCurrentEmergencyFundKeyboard())
+	return nil
+}
+
+func (h *OnboardingHandler) handleStepCurrentEmergencyFundAmount(ctx context.Context, f *FSM, sess *Session, text string) error {
+	val, err := ParseMoney(text)
+	if err != nil {
+		f.Reply(sess.ChatID, fmt.Sprintf("⚠️ %s\n\nPor favor, informe quanto já possui guardado (ex: `5000.00`) ou envie `0` se não tiver:", err.Error()))
+		return nil
+	}
+	sess.CurrentEmergencyFund = val
+	return h.askEmergencyFundGoal(ctx, f, sess, fmt.Sprintf("✅ Reserva atual de **R$ %.2f** registrada!\n\n", val))
+}
+
 func (h *OnboardingHandler) handleStepSavingsTarget(ctx context.Context, f *FSM, sess *Session, text string) error {
 	val, err := ParseMoney(text)
 	if err != nil {
@@ -200,6 +233,14 @@ func (h *OnboardingHandler) HandleStepCallback(ctx context.Context, f *FSM, sess
 			return h.onFinishFixedExpenses(ctx, f, sess)
 		}
 
+	case StateWaitingCurrentEmergencyFundChoice:
+		switch action {
+		case ActionHaveEmergencyFund:
+			return h.onPromptCurrentEmergencyFundAmount(ctx, f, sess)
+		case ActionNoEmergencyFund:
+			return h.onNoCurrentEmergencyFund(ctx, f, sess)
+		}
+
 	case StateWaitingEmergencyFundChoice:
 		switch action {
 		case ActionFund6:
@@ -235,13 +276,35 @@ func (h *OnboardingHandler) HandleStepCallback(ctx context.Context, f *FSM, sess
 }
 
 func (h *OnboardingHandler) onFinishFixedExpenses(ctx context.Context, f *FSM, sess *Session) error {
-	sess.CurrentState = StateWaitingEmergencyFundChoice
+	sess.CurrentState = StateWaitingCurrentEmergencyFundChoice
 	msg := fmt.Sprintf(
 		"🛡️ Seu custo essencial mensal é de **R$ %.2f**.\n\n"+
-			"👉 *Pergunta 4 de 5:*\n"+
-			"Para sua segurança financeira, o método recomenda montar uma Reserva de Emergência.\n\n"+
-			"Você prefere uma meta de **6 meses (CLT)** ou **12 meses (PJ/Autônomo)**?",
+			"👉 *Pergunta 4 de 5 — Reserva de Emergência:*\n"+
+			"Antes de definirmos sua meta de reserva, **você já possui algum valor guardado** hoje para essa finalidade?",
 		sess.MonthlyEssentialCost,
+	)
+	f.ReplyWithKeyboard(sess.ChatID, msg, makeCurrentEmergencyFundKeyboard())
+	return nil
+}
+
+func (h *OnboardingHandler) onPromptCurrentEmergencyFundAmount(ctx context.Context, f *FSM, sess *Session) error {
+	sess.CurrentState = StateWaitingCurrentEmergencyFundAmount
+	msg := "💰 Que ótimo! Quanto você já tem guardado hoje na sua Reserva de Emergência? (Ex: `5000.00` ou `5.000,00`):"
+	f.Reply(sess.ChatID, msg)
+	return nil
+}
+
+func (h *OnboardingHandler) onNoCurrentEmergencyFund(ctx context.Context, f *FSM, sess *Session) error {
+	sess.CurrentEmergencyFund = 0
+	return h.askEmergencyFundGoal(ctx, f, sess, "🚀 Sem problemas, vamos construir sua reserva juntos do zero!\n\n")
+}
+
+func (h *OnboardingHandler) askEmergencyFundGoal(ctx context.Context, f *FSM, sess *Session, prefix string) error {
+	sess.CurrentState = StateWaitingEmergencyFundChoice
+	msg := fmt.Sprintf(
+		"%sPara sua segurança financeira, o método recomenda ter uma reserva de **6 meses (CLT)** ou **12 meses (PJ/Autônomo)** de custos essenciais.\n\n"+
+			"Qual meta você prefere definir?",
+		prefix,
 	)
 	f.ReplyWithKeyboard(sess.ChatID, msg, makeEmergencyFundKeyboard(sess.MonthlyEssentialCost))
 	return nil
@@ -260,10 +323,12 @@ func (h *OnboardingHandler) onChooseEmergencyFund(ctx context.Context, f *FSM, s
 		example = "500.00"
 	}
 
+	targetTotal := sess.MonthlyEssentialCost * float64(months)
 	msg := fmt.Sprintf(
-		"🎯 Meta de **%s** selecionada!\n\n"+
-			"Quanto você planeja guardar por mês para construir essa reserva? (Ex: `%s`):",
+		"🎯 Meta de **%s** selecionada! (Total: **R$ %.2f**)\n\n"+
+			"Quanto você planeja guardar por mês para alcançar ou complementar essa reserva? (Ex: `%s`):",
 		label,
+		targetTotal,
 		example,
 	)
 	f.Reply(sess.ChatID, msg)
@@ -313,15 +378,16 @@ func (h *OnboardingHandler) finalizeOnboarding(ctx context.Context, f *FSM, sess
 	}
 
 	req := client.OnboardingRequest{
-		TelegramID:          sess.TelegramID,
-		FirstName:           sess.FirstName,
-		Username:            usernamePtr,
-		InitialBalance:      sess.InitialBalance,
-		CycleStartDay:       cycleDay,
-		FixedExpenses:       fixedExpenses,
-		EmergencyFundMonths: fundMonths,
-		TargetSavings:       sess.TargetSavings,
-		Investments:         investments,
+		TelegramID:           sess.TelegramID,
+		FirstName:            sess.FirstName,
+		Username:             usernamePtr,
+		InitialBalance:       sess.InitialBalance,
+		CycleStartDay:        cycleDay,
+		FixedExpenses:        fixedExpenses,
+		EmergencyFundMonths:  fundMonths,
+		CurrentEmergencyFund: sess.CurrentEmergencyFund,
+		TargetSavings:        sess.TargetSavings,
+		Investments:          investments,
 	}
 
 	resp, err := h.client.SaveOnboarding(ctx, req)
@@ -338,6 +404,11 @@ func (h *OnboardingHandler) finalizeOnboarding(ctx context.Context, f *FSM, sess
 	endDateStr := resp.Cycle.EndDate
 	if t, err := time.Parse("2006-01-02", endDateStr); err == nil {
 		endDateStr = t.Format("02/01/2006")
+	}
+
+	emergencyBalance := sess.CurrentEmergencyFund
+	if resp.EmergencyFund.CurrentBalance > 0 {
+		emergencyBalance = resp.EmergencyFund.CurrentBalance
 	}
 
 	reportMsg := fmt.Sprintf(
@@ -360,7 +431,7 @@ func (h *OnboardingHandler) finalizeOnboarding(ctx context.Context, f *FSM, sess
 		resp.Cycle.DaysRemaining,
 		endDateStr,
 		resp.TotalLiquidBalance,
-		resp.TotalLiquidBalance,
+		emergencyBalance,
 		resp.EmergencyFund.ChosenTarget,
 		resp.EmergencyFund.ProgressPercent,
 		resp.TotalInvested,
@@ -403,6 +474,15 @@ func makeFinishFixedExpensesKeyboard() tgbotapi.InlineKeyboardMarkup {
 	return tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("✅ Concluir Despesas Fixas", string(ActionFinishFixedExpenses)),
+		),
+	)
+}
+
+func makeCurrentEmergencyFundKeyboard() tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("💰 Sim, já tenho guardado", string(ActionHaveEmergencyFund)),
+			tgbotapi.NewInlineKeyboardButtonData("🚀 Não, começar do zero", string(ActionNoEmergencyFund)),
 		),
 	)
 }

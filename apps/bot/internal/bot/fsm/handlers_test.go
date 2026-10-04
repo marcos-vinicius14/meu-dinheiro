@@ -240,12 +240,32 @@ func TestOnboarding_HappyPath_WithoutInvestments(t *testing.T) {
 	assert.True(t, handled)
 
 	sess, _ = store.Get(telegramID)
-	assert.Equal(t, fsm.StateWaitingEmergencyFundChoice, sess.CurrentState)
+	assert.Equal(t, fsm.StateWaitingCurrentEmergencyFundChoice, sess.CurrentState)
 	assert.Contains(t, getLastSentText(sender), "Reserva de Emergência")
+
+	// 6b. Callback no_emergency_fund (não possui valor guardado)
+	updateNoFund := &tgbotapi.Update{
+		UpdateID: 7,
+		CallbackQuery: &tgbotapi.CallbackQuery{
+			ID:   "cb_nofund",
+			From: &tgbotapi.User{ID: telegramID, FirstName: "Alice"},
+			Data: "no_emergency_fund",
+			Message: &tgbotapi.Message{
+				Chat: &tgbotapi.Chat{ID: chatID},
+			},
+		},
+	}
+	handled, err = engine.HandleUpdate(ctx, updateNoFund)
+	require.NoError(t, err)
+	assert.True(t, handled)
+
+	sess, _ = store.Get(telegramID)
+	assert.Equal(t, fsm.StateWaitingEmergencyFundChoice, sess.CurrentState)
+	assert.Equal(t, 0.0, sess.CurrentEmergencyFund)
 
 	// 7. Callback fund_6 (escolha de 6 meses)
 	updateFund6 := &tgbotapi.Update{
-		UpdateID: 7,
+		UpdateID: 8,
 		CallbackQuery: &tgbotapi.CallbackQuery{
 			ID:   "cb_2",
 			From: &tgbotapi.User{ID: telegramID, FirstName: "Alice"},
@@ -581,4 +601,76 @@ func TestOnboarding_CallbackStateGuard_ReplayProtection(t *testing.T) {
 	// Mensagem de aviso deve ser enviada
 	lastMsg := getLastSentText(sender)
 	assert.Contains(t, lastMsg, "Essa opção pertence a uma etapa anterior ou não é mais válida")
+}
+
+func TestOnboarding_CurrentEmergencyFund_WithAmountAndValidation(t *testing.T) {
+	api := newAPIMockServer()
+	defer api.server.Close()
+
+	engine, store, sender := setupFSMWithHandler(api)
+	ctx := context.Background()
+	telegramID := int64(1005)
+	chatID := int64(2005)
+
+	sess := store.GetOrCreate(telegramID, chatID, "Lucas", "")
+	sess.InitialBalance = 5000.00
+	sess.CycleStartDay = 5
+	sess.CurrentState = fsm.StateWaitingCurrentEmergencyFundChoice
+	store.Set(sess)
+
+	// 1. Usuário clica em "have_emergency_fund"
+	updateHaveFund := &tgbotapi.Update{
+		UpdateID: 50,
+		CallbackQuery: &tgbotapi.CallbackQuery{
+			ID:   "cb_have",
+			From: &tgbotapi.User{ID: telegramID, FirstName: "Lucas"},
+			Data: string(fsm.ActionHaveEmergencyFund),
+			Message: &tgbotapi.Message{
+				Chat: &tgbotapi.Chat{ID: chatID},
+			},
+		},
+	}
+	handled, err := engine.HandleUpdate(ctx, updateHaveFund)
+	require.NoError(t, err)
+	assert.True(t, handled)
+
+	sess, exists := store.Get(telegramID)
+	require.True(t, exists)
+	assert.Equal(t, fsm.StateWaitingCurrentEmergencyFundAmount, sess.CurrentState)
+	assert.Contains(t, getLastSentText(sender), "Quanto você já tem guardado")
+
+	// 2. Envia texto inválido (negativo ou não numérico)
+	updateInvalid := &tgbotapi.Update{
+		UpdateID: 51,
+		Message: &tgbotapi.Message{
+			Text: "não sei",
+			From: &tgbotapi.User{ID: telegramID, FirstName: "Lucas"},
+			Chat: &tgbotapi.Chat{ID: chatID},
+		},
+	}
+	handled, err = engine.HandleUpdate(ctx, updateInvalid)
+	require.NoError(t, err)
+	assert.True(t, handled)
+
+	sess, _ = store.Get(telegramID)
+	assert.Equal(t, fsm.StateWaitingCurrentEmergencyFundAmount, sess.CurrentState)
+	assert.Contains(t, getLastSentText(sender), "Valor monetário inválido")
+
+	// 3. Envia valor válido "3500.50"
+	updateValid := &tgbotapi.Update{
+		UpdateID: 52,
+		Message: &tgbotapi.Message{
+			Text: "3500.50",
+			From: &tgbotapi.User{ID: telegramID, FirstName: "Lucas"},
+			Chat: &tgbotapi.Chat{ID: chatID},
+		},
+	}
+	handled, err = engine.HandleUpdate(ctx, updateValid)
+	require.NoError(t, err)
+	assert.True(t, handled)
+
+	sess, _ = store.Get(telegramID)
+	assert.Equal(t, fsm.StateWaitingEmergencyFundChoice, sess.CurrentState)
+	assert.Equal(t, 3500.50, sess.CurrentEmergencyFund)
+	assert.Contains(t, getLastSentText(sender), "Qual meta você prefere definir?")
 }

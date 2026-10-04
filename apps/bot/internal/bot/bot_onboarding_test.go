@@ -202,11 +202,27 @@ func TestBot_OnboardingIntegration_E2E(t *testing.T) {
 		},
 	})
 	sess, _ = b.SessionStore().Get(telegramID)
+	assert.Equal(t, fsm.StateWaitingCurrentEmergencyFundChoice, sess.CurrentState)
+
+	// 5b. Responde se já possui valor guardado: não possui
+	sendUpdate(tgbotapi.Update{
+		UpdateID: 6,
+		CallbackQuery: &tgbotapi.CallbackQuery{
+			ID:   "cb_1b",
+			From: &tgbotapi.User{ID: telegramID, FirstName: "Diana"},
+			Data: string(fsm.ActionNoEmergencyFund),
+			Message: &tgbotapi.Message{
+				Chat: &tgbotapi.Chat{ID: chatID},
+			},
+		},
+	})
+	sess, _ = b.SessionStore().Get(telegramID)
 	assert.Equal(t, fsm.StateWaitingEmergencyFundChoice, sess.CurrentState)
+	assert.Equal(t, 0.0, sess.CurrentEmergencyFund)
 
 	// 6. Clica em fund_12 (12 meses PJ)
 	sendUpdate(tgbotapi.Update{
-		UpdateID: 6,
+		UpdateID: 7,
 		CallbackQuery: &tgbotapi.CallbackQuery{
 			ID:   "cb_2",
 			From: &tgbotapi.User{ID: telegramID, FirstName: "Diana"},
@@ -222,7 +238,7 @@ func TestBot_OnboardingIntegration_E2E(t *testing.T) {
 
 	// 7. Envia aporte mensal: 600.00
 	sendUpdate(tgbotapi.Update{
-		UpdateID: 7,
+		UpdateID: 8,
 		Message: &tgbotapi.Message{
 			Text: "600.00",
 			From: &tgbotapi.User{ID: telegramID, FirstName: "Diana"},
@@ -235,7 +251,7 @@ func TestBot_OnboardingIntegration_E2E(t *testing.T) {
 
 	// 8. Clica em skip_investments
 	sendUpdate(tgbotapi.Update{
-		UpdateID: 8,
+		UpdateID: 9,
 		CallbackQuery: &tgbotapi.CallbackQuery{
 			ID:   "cb_3",
 			From: &tgbotapi.User{ID: telegramID, FirstName: "Diana"},
@@ -259,6 +275,7 @@ func TestBot_OnboardingIntegration_E2E(t *testing.T) {
 	assert.Equal(t, 1, lastReq.CycleStartDay)
 	assert.Equal(t, 12, lastReq.EmergencyFundMonths)
 	assert.Equal(t, 600.00, lastReq.TargetSavings)
+	assert.Equal(t, 0.0, lastReq.CurrentEmergencyFund)
 	assert.Len(t, lastReq.FixedExpenses, 1)
 
 	// Mensagem de sucesso recebida
@@ -378,9 +395,28 @@ func TestBot_OnboardingIntegration_WithInvestments(t *testing.T) {
 			Message: &tgbotapi.Message{Chat: &tgbotapi.Chat{ID: chatID}},
 		},
 	})
-	// 6. Escolhe reserva 12 meses
+	// 5b. Responde que já possui reserva guardada
 	sendUpdate(tgbotapi.Update{
 		UpdateID: 6,
+		CallbackQuery: &tgbotapi.CallbackQuery{
+			ID:      "cb_have_fund",
+			From:    &tgbotapi.User{ID: telegramID, FirstName: "Arthur"},
+			Data:    string(fsm.ActionHaveEmergencyFund),
+			Message: &tgbotapi.Message{Chat: &tgbotapi.Chat{ID: chatID}},
+		},
+	})
+	// 5c. Envia valor já guardado: 2000.00
+	sendUpdate(tgbotapi.Update{
+		UpdateID: 7,
+		Message: &tgbotapi.Message{
+			Text: "2000.00",
+			From: &tgbotapi.User{ID: telegramID, FirstName: "Arthur"},
+			Chat: &tgbotapi.Chat{ID: chatID},
+		},
+	})
+	// 6. Escolhe reserva 12 meses
+	sendUpdate(tgbotapi.Update{
+		UpdateID: 8,
 		CallbackQuery: &tgbotapi.CallbackQuery{
 			ID:      "cb_f12",
 			From:    &tgbotapi.User{ID: telegramID, FirstName: "Arthur"},
@@ -390,7 +426,7 @@ func TestBot_OnboardingIntegration_WithInvestments(t *testing.T) {
 	})
 	// 7. Aporte mensal
 	sendUpdate(tgbotapi.Update{
-		UpdateID: 7,
+		UpdateID: 9,
 		Message: &tgbotapi.Message{
 			Text: "500.00",
 			From: &tgbotapi.User{ID: telegramID, FirstName: "Arthur"},
@@ -399,7 +435,7 @@ func TestBot_OnboardingIntegration_WithInvestments(t *testing.T) {
 	})
 	// 8. Escolhe adicionar investimento
 	sendUpdate(tgbotapi.Update{
-		UpdateID: 8,
+		UpdateID: 10,
 		CallbackQuery: &tgbotapi.CallbackQuery{
 			ID:      "cb_add_inv",
 			From:    &tgbotapi.User{ID: telegramID, FirstName: "Arthur"},
@@ -409,7 +445,7 @@ func TestBot_OnboardingIntegration_WithInvestments(t *testing.T) {
 	})
 	// 9. Envia ativo
 	sendUpdate(tgbotapi.Update{
-		UpdateID: 9,
+		UpdateID: 11,
 		Message: &tgbotapi.Message{
 			Text: "ALUP11 10 42.23",
 			From: &tgbotapi.User{ID: telegramID, FirstName: "Arthur"},
@@ -418,7 +454,7 @@ func TestBot_OnboardingIntegration_WithInvestments(t *testing.T) {
 	})
 	// 10. Conclui onboarding com investimentos
 	sendUpdate(tgbotapi.Update{
-		UpdateID: 10,
+		UpdateID: 12,
 		CallbackQuery: &tgbotapi.CallbackQuery{
 			ID:      "cb_finish_inv",
 			From:    &tgbotapi.User{ID: telegramID, FirstName: "Arthur"},
@@ -440,6 +476,7 @@ func TestBot_OnboardingIntegration_WithInvestments(t *testing.T) {
 	assert.Equal(t, 10, lastReq.CycleStartDay)
 	assert.Equal(t, 12, lastReq.EmergencyFundMonths)
 	assert.Equal(t, 500.00, lastReq.TargetSavings)
+	assert.Equal(t, 2000.00, lastReq.CurrentEmergencyFund)
 	require.Len(t, lastReq.Investments, 1)
 	assert.Equal(t, "ALUP11", lastReq.Investments[0].Ticker)
 	assert.Equal(t, 10.0, lastReq.Investments[0].Quantity)

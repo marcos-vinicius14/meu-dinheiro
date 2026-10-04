@@ -85,7 +85,9 @@ func loadEnv() {
 		return false
 	}
 
-	// Carrega .env.local prioritariamente; em seguida, preenche eventuais pendências com .env
-	loadFromFile(".env.local")
+	// Carrega .env.local prioritariamente; se não existir, tenta .env
+	if loadFromFile(".env.local") {
+		return
+	}
 	loadFromFile(".env")
 }
