@@ -111,8 +111,8 @@ func (f *FSM) HandleUpdate(ctx context.Context, update *tgbotapi.Update) (bool, 
 	// 1. Tratamento de CallbackQuery (botões inline)
 	if update.CallbackQuery != nil {
 		cb := update.CallbackQuery
-		// Callbacks de simulação e gastos são delegados ao bot
-		if strings.HasPrefix(cb.Data, "gasto_") || strings.HasPrefix(cb.Data, "sim_") {
+		// Callbacks de simulação, gastos e investimentos são delegados ao bot
+		if strings.HasPrefix(cb.Data, "gasto_") || strings.HasPrefix(cb.Data, "sim_") || strings.HasPrefix(cb.Data, "invest:") {
 			return false, nil
 		}
 

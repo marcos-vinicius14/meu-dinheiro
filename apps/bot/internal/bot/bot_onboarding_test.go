@@ -49,6 +49,9 @@ func (m *mockSender) LastText() string {
 	if msg, ok := last.(tgbotapi.MessageConfig); ok {
 		return msg.Text
 	}
+	if edit, ok := last.(tgbotapi.EditMessageTextConfig); ok {
+		return edit.Text
+	}
 	return ""
 }
 
@@ -63,6 +66,19 @@ func (m *mockSender) LastMessage() (tgbotapi.MessageConfig, bool) {
 		return msg, true
 	}
 	return tgbotapi.MessageConfig{}, false
+}
+
+func (m *mockSender) LastEditMessage() (tgbotapi.EditMessageTextConfig, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if len(m.sentMessages) == 0 {
+		return tgbotapi.EditMessageTextConfig{}, false
+	}
+	last := m.sentMessages[len(m.sentMessages)-1]
+	if edit, ok := last.(tgbotapi.EditMessageTextConfig); ok {
+		return edit, true
+	}
+	return tgbotapi.EditMessageTextConfig{}, false
 }
 
 func TestBot_OnboardingIntegration_E2E(t *testing.T) {

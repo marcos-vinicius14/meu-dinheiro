@@ -21,7 +21,7 @@ graph TD
         M1["Milestone 1: Backend de Investimentos & APIs do Bot (✅ Concluído)"] --> M2["Milestone 2: Onboarding Conversacional no Telegram (✅ Concluído)"]
         M2 --> M3["Milestone 3: Comandos do Motor Preditivo & S2S no Chat (Bot) (✅ Concluído)"]
     end
-    M3 --> M4["Milestone 4: Gestão de Ativos e Carteira de Ações (Bot) — v0.1.0"]
+    M3 --> M4["Milestone 4: Gestão de Ativos e Carteira de Ações (✅ Concluído) — v0.1.0"]
     M4 --> M5["Milestone 5: Notificações Proativas & Alertas de Risco (Bot/Worker) — v0.2.0"]
     M5 --> M6["Milestone 6: Dashboard Web Completo & Gráficos 12 Ciclos (Web) — v1.0.0"]
 ```
@@ -154,29 +154,37 @@ graph TD
 
 ---
 
-### 🟢 Milestone 4: Gestão de Ativos & Carteira de Ações `[v0.1.0]`
-**Foco:** Permitir que o usuário acompanhe e expanda sua carteira de investimentos pelo Telegram.
+### ✅ Milestone 4: Gestão de Ativos & Carteira de Ações `[v0.1.0]`
+**Foco:** Permitir que o usuário acompanhe e expanda sua carteira de investimentos pelo Telegram com recálculo de Preço Médio, apuração de Lucro/Prejuízo em vendas e visão consolidada de patrimônio.
 
-- [ ] **Comando `/investimento <TICKER>, <QUANTIDADE> unidades a <PRECO>`**:
-  - Expressão regular flexível para aceitar variações comuns:
+- [x] **Comando `/investimento` (e aliases `/comprar`, `/aporte`)**:
+  - Expressão regular flexível e expandida (`^[A-Z0-9.\-_]{1,12}$`) aceitando ações, ETFs e Renda Fixa:
     - `/investimento ALUP11, 10 unidades a 42.23`
-    - `/investimento ALUP11 10 42.23`
-    - `/investimento PETR4 100 cotas a 38.50`
-  - Se o ativo já existir na carteira, calcula o novo Preço Médio ponderado e soma a posição.
-- [ ] **Comando `/investimentos` ou `/carteira`**:
-  - Lista todos os ativos cadastrados, posições e patrimônio investido:
-    ```text
-    📊 Sua Carteira de Investimentos
-
-    • ALUP11: 10 un. | PM: R$ 42,23 | Total: R$ 422,30
-    • BBAS3:  50 un. | PM: R$ 27,50 | Total: R$ 1.375,00
-    • IVVB11:  5 un. | PM: R$ 310,00| Total: R$ 1.550,00
-    --------------------------------------------------
-    Total Investido: R$ 3.347,30
-    Patrimônio Total (Contas + Ações): R$ 8.120,50
-    ```
-- [ ] **Comando `/venda <TICKER> <QUANTIDADE> a <PRECO>`**:
-  - Abatimento de posição na carteira e lançamento opcional do crédito na conta bancária.
+    - `/comprar PETR4 100 cotas a 38.50`
+    - `/aporte TD-SELIC 1 a 14500`
+    - `/aporte CDB-INTER 5000`
+  - Se o ativo já existir na carteira, calcula o novo Preço Médio ponderado com arredondamento HalfEven (`decimal.RoundBank`) e acumula a posição.
+  - Card educativo copiável de instrução exibido imediatamente ao invocar o comando sem parâmetros.
+- [x] **Comando `/carteira` (e aliases `/investimentos`, `/portfolio`)**:
+  - Cards formatados em blocos de 2 linhas por papel com emojis temáticos.
+  - Ordenação automática por volume financeiro total investido (R$) decrescente.
+  - Cálculo e exibição do percentual de alocação de cada ativo sobre o total investido.
+  - Rodapé consolidado com Total Investido, Saldo Líquido em Contas e Patrimônio Líquido Total.
+  - Card acolhedor para carteira vazia com exemplos práticos copiáveis e botão inline `[➕ Adicionar Ativo]`.
+  - Botões inline `[➕ Novo Aporte]` e `[🔄 Atualizar]` com edição *in-place* (`tgbotapi.NewEditMessageTextAndMarkup`) no refresh sem poluição do chat.
+- [x] **Comando `/venda` (e alias `/vender`)**:
+  - Abatimento transacional de posição na custódia com lock `SELECT ... FOR UPDATE` via `POST /internal/investments/sell`.
+  - Suporte a comandos com preço (`/venda PETR4 30 a 41.50`) e sem preço (`/venda PETR4 30`).
+  - Apuração em tempo real de Lucro/Prejuízo realizado em R$ e % com badges visuais (`🟢 Lucro` / `🔴 Prejuízo`).
+  - Botão inline opcional `[💳 Creditar R$ X no Saldo Líquido]` via `POST /internal/transactions/income` e `[🛡️ Manter Apenas na Carteira]`.
+  - Atalho inteligente de excesso de custódia `[Vender Todas as X]` ao tentar vender acima do saldo em carteira.
+  - Encerramento automático de posição zerada com card especial `🏁 Posição Encerrada!` e ciclo de recompra limpo (novo PM).
+  - Botão efêmero de reversão rápida `[↩️ Desfazer Venda]` recompondo as cotas ao Preço Médio original.
+- [x] **Preservação da UX & Teclado Persistente**:
+  - O teclado inferior 2x2 permanece estritamente focado no fluxo de caixa diário (`/s2s`, `/gasto`, `/simular`, `/checkin`), isolando ações de investimento em botões inline contextuais.
+- [x] **Troféu de Testes**:
+  - 7 testes de integração ponta a ponta na API contra PostgreSQL 18 via Testcontainers em `internal_bot_api_investment_test.go`.
+  - 8 suítes completas de testes unitários com `-race` no Bot em `bot_invest_test.go` e `parsers_test.go`.
 
 ---
 
@@ -213,6 +221,6 @@ graph TD
 | **`v0.0.1`** *(MVP Core Loop)* | **M1** | Backend de Investimentos & APIs Bot | `apps/api` | ✅ Concluído |
 | **`v0.0.1`** *(MVP Core Loop)* | **M2** | Onboarding Conversacional & Saldo Inicial | `apps/bot` | ✅ Concluído |
 | **`v0.0.1`** *(MVP Core Loop)* | **M3** | Comandos S2S, /gasto, /simular, /checkin e /renda | `apps/bot` | ✅ Concluído |
-| **`v0.1.0`** | **M4** | Comando `/investimento` & Carteira de Ações | `apps/bot` | ⏳ Planejado |
+| **`v0.1.0`** | **M4** | Carteira de Ações, Aportes, Vendas e P&L | `apps/api` + `apps/bot` | ✅ Concluído |
 | **`v0.2.0`** | **M5** | Notificações Proativas & Worker S2S | `apps/bot` + Worker | ⏳ Planejado |
 | **`v1.0.0`** | **M6** | Dashboard Web Completo & Gráficos 12 Meses | `apps/web` | ⏳ Futuro |

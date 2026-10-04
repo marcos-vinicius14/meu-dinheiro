@@ -12,7 +12,7 @@ O Meu Dinheiro transforma a gestão financeira pessoal ao substituir o registro 
 
 - [x] **Phase 1: Onboarding Conversacional no Telegram** - Máquina de estados conversacional, coleta de saldo inicial, ciclo, gastos essenciais, reserva 6x/12x e entrega do primeiro S2S.
 - [x] **Phase 2: Comandos do Motor Preditivo & Operação Diária** - Implementação dos comandos `/s2s`, `/gasto`, `/simular` (what-if 12 ciclos) e `/checkin` diário no chat.
-- [ ] **Phase 3: Gestão de Carteira de Ações no Telegram (`v0.1.0`)** - Comandos `/investimento`, `/investimentos` e `/venda` com recálculo de preço médio ponderado.
+- [x] **Phase 3: Gestão de Carteira de Ações no Telegram (`v0.1.0`)** - Comandos `/investimento`, `/investimentos` e `/venda` com recálculo de preço médio ponderado. (completed 2026-10-04)
 - [ ] **Phase 4: Notificações Proativas & Alertas de Risco (`v0.2.0`)** - Workers agendados de Bom Dia (S2S matinal), alerta de degradação da saúde do ciclo e lembrete de check-in.
 - [ ] **Phase 5: Dashboard Web Completo & Gráficos 12 Ciclos (`v1.0.0`)** - Interface analítica rica em Vue 3 com curva de liquidez futura e painel de investimentos.
 
@@ -79,10 +79,11 @@ Plans:
   2. Usuário digita `/investimentos` ou `/carteira` e visualiza uma tabela formatada com seus ativos, quantidade, PM e total investido.
   3. Usuário pode abater posições via `/venda`.
 
-**Plans**: 1 plan
+**Plans**: 2/2 plans complete
 
 Plans:
-- [ ] 03-01: Implementar parser flexível de ativos e comandos `/investimento`, `/investimentos` e `/venda` no bot
+- [x] 03-01: API & Client Layer — Endpoints internos de Listagem e Venda de Investimentos com Testcontainers Postgres 18 e métodos no APIClient
+- [x] 03-02: Bot Presentation & Interaction Layer — Parsers com suporte a Renda Fixa, comandos `/carteira`, `/investimento`, `/venda` e callbacks inline
 
 ---
 
@@ -131,7 +132,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 1. Onboarding Conversacional no Telegram | v0.0.1 (MVP) | 2/2 | Complete | 2026-10-03 |
-| 2. Comandos do Motor Preditivo & Operação Diária | v0.0.1 (MVP) | 0/3 | Not started | - |
-| 3. Gestão de Carteira de Ações no Telegram | v0.1.0 | 0/1 | Not started | - |
+| 2. Comandos do Motor Preditivo & Operação Diária | v0.0.1 (MVP) | 3/3 | Complete | 2026-10-03 |
+| 3. Gestão de Carteira de Ações no Telegram | v0.1.0 | 2/2 | Complete    | 2026-10-04 |
 | 4. Notificações Proativas & Alertas de Risco | v0.2.0 | 0/1 | Not started | - |
 | 5. Dashboard Web Completo & Gráficos 12 Ciclos | v1.0.0 | 0/2 | Not started | - |

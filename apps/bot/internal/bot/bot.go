@@ -162,6 +162,9 @@ func (b *Bot) handleMessage(ctx context.Context, msg *tgbotapi.Message) {
 				"• /s2s - Consultar saldo seguro diário\n"+
 				"• /gasto <valor> <descrição> - Lançar gasto rápido\n"+
 				"• /renda <valor> <descrição> - Registrar entrada de dinheiro\n"+
+				"• /carteira - Visualizar carteira e patrimônio investido\n"+
+				"• /investimento <ticker> <qtd> <preço> - Registrar aporte em ativo\n"+
+				"• /venda <ticker> <qtd> [preço] - Registrar venda ou baixa de ativo\n"+
 				"• /simular <valor> [parcelas] - Simular impacto de compras futuras\n"+
 				"• /checkin - Realizar conferência de saldo diária\n"+
 				"• /ajuda - Exibir instruções de uso\n"+
@@ -195,6 +198,25 @@ func (b *Bot) handleMessage(ctx context.Context, msg *tgbotapi.Message) {
 		return
 	}
 
+	// Comandos de Carteira de Investimentos (D-01..D-04, D-15)
+	if text == "/carteira" || text == "/investimentos" || text == "/portfolio" {
+		b.handlePortfolioCommand(ctx, chatID, user.ID)
+		return
+	}
+
+	// Comandos de Aporte de Investimento (INVEST-01, D-15, D-16)
+	if text == "/investimento" || text == "/comprar" || text == "/aporte" ||
+		strings.HasPrefix(text, "/investimento ") || strings.HasPrefix(text, "/comprar ") || strings.HasPrefix(text, "/aporte ") {
+		b.handleInvestCommand(ctx, chatID, user, text)
+		return
+	}
+
+	// Comandos de Venda de Investimento (INVEST-03, D-05..D-10, D-15, D-16)
+	if text == "/venda" || text == "/vender" || strings.HasPrefix(text, "/venda ") || strings.HasPrefix(text, "/vender ") {
+		b.handleSellCommand(ctx, chatID, user, text)
+		return
+	}
+
 	// Comandos de Simulação What-If (PRED-03, D-05..D-08, D-15)
 	if text == "/simular" || text == ButtonSimulate || strings.HasPrefix(text, "/simular ") {
 		b.handleSimulateCommand(ctx, chatID, user.ID, text)
@@ -207,9 +229,12 @@ func (b *Bot) handleMessage(ctx context.Context, msg *tgbotapi.Message) {
 			"1. *Saldo Seguro (S2S)*: Utilize `/s2s` ou o botão no teclado para ver quanto pode gastar hoje.\n" +
 			"2. *Lançamento de Gastos*: Envie `/gasto <valor> <descrição>` para debitar despesas e ver a recalibração imediata do seu S2S.\n" +
 			"3. *Entrada de Dinheiro*: Envie `/renda <valor> <descrição>` para registrar salários, freelas ou recebimentos e aumentar seu S2S na hora.\n" +
-			"4. *Simulador What-If*: Envie `/simular <valor> [parcelas]` para simular o impacto de compras em até 12 ciclos futuros.\n" +
-			"5. *Check-in Diário*: Envie `/checkin` ou clique no botão para conferir saldo bancário e fechar o dia com chave de ouro.\n" +
-			"6. *Login no Navegador*: Acesse a plataforma web e clique em 'Entrar com Telegram'.\n\n" +
+			"4. *Carteira de Investimentos*: Envie `/carteira` (ou `/investimentos`) para acompanhar seus ativos, PM e patrimônio consolidado.\n" +
+			"5. *Aporte de Ativos*: Envie `/investimento <TICKER> <QTD> [a] <PREÇO>` (ou `/aporte`, `/comprar`) para atualizar o Preço Médio Ponderado.\n" +
+			"6. *Venda de Ativos*: Envie `/venda <TICKER> <QTD> [a PREÇO]` para baixar custódia e apurar Lucro/Prejuízo com opção de creditar no saldo em conta.\n" +
+			"7. *Simulador What-If*: Envie `/simular <valor> [parcelas]` para simular o impacto de compras em até 12 ciclos futuros.\n" +
+			"8. *Check-in Diário*: Envie `/checkin` ou clique no botão para conferir saldo bancário e fechar o dia com chave de ouro.\n" +
+			"9. *Login no Navegador*: Acesse a plataforma web e clique em 'Entrar com Telegram'.\n\n" +
 			"💡 *Como funciona o Cálculo do S2S (Saldo Seguro Diário)?*\n" +
 			"O S2S é o valor que você pode gastar livremente hoje sem comprometer suas contas fixas nem a sua meta de poupança/reserva. O motor calcula sua *Liquidez Disponível* (saldo em conta + receitas previstas até o fim do ciclo − contas fixas − parcelas já assumidas − meta de reserva) e divide essa capacidade flexível restante pelos *dias que ainda restam no ciclo*. Ao registrar qualquer gasto ou receita, o valor diário é recalibrado imediatamente.\n\n" +
 			"🔮 *Como funciona o Cálculo da Simulação What-If?*\n" +
@@ -333,6 +358,11 @@ func (b *Bot) handleCallbackQuery(ctx context.Context, cb *tgbotapi.CallbackQuer
 
 	if strings.HasPrefix(cb.Data, "sim_") {
 		b.handleSimulateCallback(ctx, cb)
+		return
+	}
+
+	if strings.HasPrefix(cb.Data, "invest:") {
+		b.handleInvestCallback(ctx, cb)
 		return
 	}
 

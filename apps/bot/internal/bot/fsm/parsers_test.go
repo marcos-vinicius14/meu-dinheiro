@@ -1,6 +1,7 @@
 package fsm
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -249,4 +250,107 @@ func TestParseSimulationCommand(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestParseInvestment_FixedIncomeAndEquities(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		wantTk    string
+		wantQty   float64
+		wantPrice float64
+	}{
+		{"tesouro selic com hífen", "TD-SELIC 1 14500.00", "TD-SELIC", 1, 14500.00},
+		{"cdb inter com unidades e pontuação", "CDB-INTER, 10 un a 1000.00", "CDB-INTER", 10, 1000.00},
+		{"tesouro ipca com cotas e vírgula decimal", "TD-IPCA29 2 cotas a 3200,50", "TD-IPCA29", 2, 3200.50},
+		{"etf bova11", "BOVA11 50 a 115.20", "BOVA11", 50, 115.20},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ParseInvestment(tt.input)
+			if err != nil {
+				t.Fatalf("ParseInvestment(%q) unexpected error = %v", tt.input, err)
+			}
+			if got.Ticker != tt.wantTk {
+				t.Errorf("Ticker = %q, want %q", got.Ticker, tt.wantTk)
+			}
+			if got.Quantity != tt.wantQty {
+				t.Errorf("Quantity = %v, want %v", got.Quantity, tt.wantQty)
+			}
+			if got.AveragePrice != tt.wantPrice {
+				t.Errorf("AveragePrice = %v, want %v", got.AveragePrice, tt.wantPrice)
+			}
+		})
+	}
+}
+
+func TestParseSaleCommand_SuccessCases(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		wantTk    string
+		wantQty   float64
+		wantPrice *float64
+	}{
+		{"apenas ticker e quantidade sem preço", "PETR4 30", "PETR4", 30, nil},
+		{"ticker quantidade com a e preço decimal", "PETR4 30 a 41.50", "PETR4", 30, floatPtr(41.50)},
+		{"ticker quantidade e preço sem preposição", "PETR4 30 41.50", "PETR4", 30, floatPtr(41.50)},
+		{"com pontuação unidades e vírgula decimal", "PETR4, 30 un a 41,50", "PETR4", 30, floatPtr(41.50)},
+		{"renda fixa com hífen", "TD-SELIC 1 a 14500.00", "TD-SELIC", 1, floatPtr(14500.00)},
+		{"ticker minúsculo com de e R$", "bbas3 10 de R$ 28,00", "BBAS3", 10, floatPtr(28.00)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ticker, qty, price, err := ParseSaleCommand(tt.input)
+			if err != nil {
+				t.Fatalf("ParseSaleCommand(%q) unexpected error = %v", tt.input, err)
+			}
+			if ticker != tt.wantTk {
+				t.Errorf("ticker = %q, want %q", ticker, tt.wantTk)
+			}
+			if qty != tt.wantQty {
+				t.Errorf("qty = %v, want %v", qty, tt.wantQty)
+			}
+			if (price == nil && tt.wantPrice != nil) || (price != nil && tt.wantPrice == nil) {
+				t.Fatalf("price = %v, want %v", price, tt.wantPrice)
+			}
+			if price != nil && tt.wantPrice != nil && *price != *tt.wantPrice {
+				t.Errorf("price = %v, want %v", *price, *tt.wantPrice)
+			}
+		})
+	}
+}
+
+func TestParseSaleCommand_ValidationErrors(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		errSubstr string
+	}{
+		{"string vazia", "", "Argumentos obrigatórios ausentes"},
+		{"sem quantidade", "PETR4", "Informe a quantidade"},
+		{"sem ticker", "10 40.00", "Código do ativo (ticker) não informado ou inválido"},
+		{"quantidade zero", "PETR4 0 40.00", "Quantidade deve ser maior que zero"},
+		{"quantidade negativa", "PETR4 -10 40.00", "Quantidade deve ser maior que zero"},
+		{"preço negativo", "PETR4 10 -40.00", "Preço de venda não pode ser negativo"},
+		{"ticker muito longo acima de 12", "TICKERMUITOLONGO123 10", "Código do ativo (ticker) não informado ou inválido"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, _, _, err := ParseSaleCommand(tt.input)
+			if err == nil {
+				t.Fatalf("ParseSaleCommand(%q) expected error containing %q, got nil", tt.input, tt.errSubstr)
+			}
+			if !strings.Contains(err.Error(), tt.errSubstr) {
+				t.Errorf("ParseSaleCommand(%q) error = %q, want substr %q", tt.input, err.Error(), tt.errSubstr)
+			}
+		})
+	}
+}
+
+func floatPtr(f float64) *float64 {
+	return &f
 }

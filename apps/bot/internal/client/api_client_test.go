@@ -395,3 +395,134 @@ func TestAPIClientRegisterIncome(t *testing.T) {
 	assert.Equal(t, "HEALTHY", resp.HealthStatus)
 	assert.Equal(t, 5200.00, resp.TotalLiquidBalance)
 }
+
+func TestAPIClient_ListInvestments_Success(t *testing.T) {
+	expectedSecret := "bot-secret"
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/internal/investments", r.URL.Path)
+		assert.Equal(t, "12345", r.URL.Query().Get("telegram_id"))
+		assert.Equal(t, expectedSecret, r.Header.Get("X-Internal-Secret"))
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{
+			"investments": [
+				{
+					"id": "inv-1",
+					"ticker": "ALUP11",
+					"quantity": 100,
+					"average_price": 45.00,
+					"total_cost": 4500.00
+				},
+				{
+					"id": "inv-2",
+					"ticker": "TD-SELIC",
+					"quantity": "2.5",
+					"average_price": 14000.00,
+					"total_cost": 35000.00
+				}
+			],
+			"total_invested": 39500.00,
+			"total_liquid_balance": 5000.00,
+			"total_net_worth": 44500.00
+		}`))
+	}))
+	defer server.Close()
+
+	apiClient := client.NewAPIClient(server.URL, expectedSecret)
+	resp, err := apiClient.ListInvestments(context.Background(), 12345)
+
+	require.NoError(t, err)
+	assert.Len(t, resp.Investments, 2)
+	assert.Equal(t, "ALUP11", resp.Investments[0].Ticker)
+	assert.Equal(t, client.FlexFloat(100), resp.Investments[0].Quantity)
+	assert.Equal(t, 45.00, resp.Investments[0].AveragePrice)
+	assert.Equal(t, 4500.00, resp.Investments[0].TotalCost)
+	assert.Equal(t, "TD-SELIC", resp.Investments[1].Ticker)
+	assert.Equal(t, client.FlexFloat(2.5), resp.Investments[1].Quantity)
+	assert.Equal(t, 39500.00, resp.TotalInvested)
+	assert.Equal(t, 5000.00, resp.TotalLiquidBalance)
+	assert.Equal(t, 44500.00, resp.TotalNetWorth)
+}
+
+func TestAPIClient_ListInvestments_Error(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(`{"error":"Usuário não encontrado"}`))
+	}))
+	defer server.Close()
+
+	apiClient := client.NewAPIClient(server.URL, "secret")
+	resp, err := apiClient.ListInvestments(context.Background(), 99999)
+
+	assert.Error(t, err)
+	assert.Nil(t, resp)
+	assert.Contains(t, err.Error(), "status 404")
+	assert.Contains(t, err.Error(), "Usuário não encontrado")
+}
+
+func TestAPIClient_SellInvestment_Success(t *testing.T) {
+	expectedSecret := "bot-secret"
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/internal/investments/sell", r.URL.Path)
+		assert.Equal(t, expectedSecret, r.Header.Get("X-Internal-Secret"))
+		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+
+		var req client.SellInvestmentRequest
+		err := json.NewDecoder(r.Body).Decode(&req)
+		require.NoError(t, err)
+		assert.Equal(t, int64(12345), req.TelegramID)
+		assert.Equal(t, "ALUP11", req.Ticker)
+		assert.Equal(t, 50.0, req.Quantity)
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{
+			"ticker": "ALUP11",
+			"sold_quantity": 50,
+			"remaining_quantity": 150,
+			"average_price": 45.00,
+			"is_closed": false,
+			"total_invested": 22750.00,
+			"total_liquid_balance": 5000.00,
+			"total_net_worth": 27750.00
+		}`))
+	}))
+	defer server.Close()
+
+	apiClient := client.NewAPIClient(server.URL, expectedSecret)
+	resp, err := apiClient.SellInvestment(context.Background(), client.SellInvestmentRequest{
+		TelegramID: 12345,
+		Ticker:     "ALUP11",
+		Quantity:   50.0,
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, "ALUP11", resp.Ticker)
+	assert.Equal(t, client.FlexFloat(50), resp.SoldQuantity)
+	assert.Equal(t, client.FlexFloat(150), resp.RemainingQuantity)
+	assert.Equal(t, 45.00, resp.AveragePrice)
+	assert.False(t, resp.IsClosed)
+	assert.Equal(t, 22750.00, resp.TotalInvested)
+	assert.Equal(t, 27750.00, resp.TotalNetWorth)
+}
+
+func TestAPIClient_SellInvestment_InsufficientQuantityError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":"quantidade insuficiente para venda"}`))
+	}))
+	defer server.Close()
+
+	apiClient := client.NewAPIClient(server.URL, "secret")
+	resp, err := apiClient.SellInvestment(context.Background(), client.SellInvestmentRequest{
+		TelegramID: 12345,
+		Ticker:     "PETR4",
+		Quantity:   100.0,
+	})
+
+	assert.Error(t, err)
+	assert.Nil(t, resp)
+	assert.Contains(t, err.Error(), "status 400")
+	assert.Contains(t, err.Error(), "quantidade insuficiente para venda")
+}
