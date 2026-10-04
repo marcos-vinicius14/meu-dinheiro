@@ -19,7 +19,7 @@ func Load() *Config {
 
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
-		dbURL = "postgres://postgres:postgres@localhost:5432/meudinheiro?sslmode=disable"
+		dbURL = "postgres://postgres:altere_para_uma_senha_forte_em_producao@postgres:5432/meu_dinheiro?sslmode=disable"
 	}
 
 	port := os.Getenv("PORT")

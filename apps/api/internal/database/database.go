@@ -38,11 +38,29 @@ func ConnectPool(ctx context.Context, databaseURL string) (*pgxpool.Pool, error)
 	return pool, nil
 }
 
-// RunMigrations executa as migrações SQL embutidas via Goose.
+// RunMigrations executa as migrações SQL embutidas via Goose com tentativas de reconexão.
 func RunMigrations(databaseURL string) error {
-	db, err := sql.Open("pgx", databaseURL)
+	var db *sql.DB
+	var err error
+
+	// Tenta conectar ao banco por até 30 segundos (10 tentativas com intervalo de 3s)
+	for attempt := 1; attempt <= 10; attempt++ {
+		db, err = sql.Open("pgx", databaseURL)
+		if err == nil {
+			if pingErr := db.Ping(); pingErr == nil {
+				break
+			} else {
+				err = pingErr
+				_ = db.Close()
+			}
+		}
+		if attempt < 10 {
+			time.Sleep(3 * time.Second)
+		}
+	}
+
 	if err != nil {
-		return fmt.Errorf("erro ao abrir conexão para migrações: %w", err)
+		return fmt.Errorf("erro ao conectar ao banco para migrações após retentativas: %w", err)
 	}
 	defer db.Close()
 

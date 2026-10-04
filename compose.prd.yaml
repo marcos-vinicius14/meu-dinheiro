@@ -3,6 +3,10 @@ services:
     image: 'postgres:18-alpine'
     container_name: meu-dinheiro-postgres-prd
     restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     env_file:
       - path: .env.prd
         required: false
@@ -11,7 +15,7 @@ services:
     ports:
       - '${POSTGRES_PORT:-5432}:5432'
     volumes:
-      - postgres_prd_data:/var/lib/postgresql
+      - postgres_prd_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-meu_dinheiro}"]
       interval: 5s
@@ -29,6 +33,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_UR}
+      PORT: ${PORT:-8080}
+      JWT_SECRET: ${JWT_SECRET}
+      BOT_USERNAME: ${BOT_USERNAME}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
     env_file:
       - path: .env.prd
         required: false
@@ -40,8 +50,8 @@ services:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 10s
       timeout: 5s
-      retries: 3
-      start_period: 10s
+      retries: 5
+      start_period: 20s
     networks:
       - meu_dinheiro_net
 
@@ -54,6 +64,15 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_API_BASE_URL: ${TELEGRAM_API_BASE_URL:-https://api.telegram.org}
+      API_BASE_URL: ${API_BASE_URL:-http://api:8080}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-altere_para_uma_chave_interna_forte_em_producao}
+      WEBHOOK_URL: ${WEBHOOK_URL:-}
+      WEBHOOK_SECRET_TOKEN: ${WEBHOOK_SECRET_TOKEN:-}
+      WEBHOOK_PORT: ${WEBHOOK_PORT:-8081}
+      WEBHOOK_PATH: ${WEBHOOK_PATH:-/telegram/webhook}
     env_file:
       - path: .env.prd
         required: false
