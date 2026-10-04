@@ -74,9 +74,11 @@ func main() {
 	r := web.NewRouter()
 
 	// Healthcheck
-	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+	healthHandler := func(w http.ResponseWriter, r *http.Request) {
 		web.JSON(w, http.StatusOK, map[string]string{"status": "UP"})
-	})
+	}
+	r.Get("/health", healthHandler)
+	r.Head("/health", healthHandler)
 
 	authMiddleware := auth.RequireAuth(jwtService, userRepo, cfg.InternalAPIKey)
 
