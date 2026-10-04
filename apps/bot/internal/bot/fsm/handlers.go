@@ -177,6 +177,12 @@ func (h *OnboardingHandler) handleStepCurrentEmergencyFundChoice(ctx context.Con
 }
 
 func (h *OnboardingHandler) handleStepCurrentEmergencyFundAmount(ctx context.Context, f *FSM, sess *Session, text string) error {
+	trimmed := strings.ToLower(strings.TrimSpace(text))
+	if trimmed == "0" || trimmed == "0,00" || trimmed == "0.00" || trimmed == "zero" || trimmed == "nenhum" || trimmed == "não" || trimmed == "nao" {
+		sess.CurrentEmergencyFund = 0
+		return h.askEmergencyFundGoal(ctx, f, sess, "🚀 Sem problemas, vamos construir sua reserva juntos do zero!\n\n")
+	}
+
 	val, err := ParseMoney(text)
 	if err != nil {
 		f.Reply(sess.ChatID, fmt.Sprintf("⚠️ %s\n\nPor favor, informe quanto já possui guardado (ex: `5000.00`) ou envie `0` se não tiver:", err.Error()))

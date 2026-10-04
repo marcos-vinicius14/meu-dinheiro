@@ -674,3 +674,67 @@ func TestOnboarding_CurrentEmergencyFund_WithAmountAndValidation(t *testing.T) {
 	assert.Equal(t, 3500.50, sess.CurrentEmergencyFund)
 	assert.Contains(t, getLastSentText(sender), "Qual meta você prefere definir?")
 }
+
+func TestOnboarding_CurrentEmergencyFund_WithThousandDotAndZero(t *testing.T) {
+	api := newAPIMockServer()
+	defer api.server.Close()
+
+	engine, store, sender := setupFSMWithHandler(api)
+	ctx := context.Background()
+
+	// Caso 1: Digitar "14.419" (cenário relatado pelo usuário onde esperava 14.419,00)
+	t.Run("milhar com ponto 14.419", func(t *testing.T) {
+		telegramID := int64(1006)
+		chatID := int64(2006)
+
+		sess := store.GetOrCreate(telegramID, chatID, "Marcos", "")
+		sess.CurrentState = fsm.StateWaitingCurrentEmergencyFundAmount
+		store.Set(sess)
+
+		update := &tgbotapi.Update{
+			UpdateID: 60,
+			Message: &tgbotapi.Message{
+				Text: "14.419",
+				From: &tgbotapi.User{ID: telegramID, FirstName: "Marcos"},
+				Chat: &tgbotapi.Chat{ID: chatID},
+			},
+		}
+		handled, err := engine.HandleUpdate(ctx, update)
+		require.NoError(t, err)
+		assert.True(t, handled)
+
+		sess, exists := store.Get(telegramID)
+		require.True(t, exists)
+		assert.Equal(t, fsm.StateWaitingEmergencyFundChoice, sess.CurrentState)
+		assert.Equal(t, 14419.00, sess.CurrentEmergencyFund)
+		assert.Contains(t, getLastSentText(sender), "R$ 14419.00")
+	})
+
+	// Caso 2: Digitar "0" quando solicitado o valor
+	t.Run("digitar zero", func(t *testing.T) {
+		telegramID := int64(1007)
+		chatID := int64(2007)
+
+		sess := store.GetOrCreate(telegramID, chatID, "Pedro", "")
+		sess.CurrentState = fsm.StateWaitingCurrentEmergencyFundAmount
+		store.Set(sess)
+
+		update := &tgbotapi.Update{
+			UpdateID: 61,
+			Message: &tgbotapi.Message{
+				Text: "0",
+				From: &tgbotapi.User{ID: telegramID, FirstName: "Pedro"},
+				Chat: &tgbotapi.Chat{ID: chatID},
+			},
+		}
+		handled, err := engine.HandleUpdate(ctx, update)
+		require.NoError(t, err)
+		assert.True(t, handled)
+
+		sess, exists := store.Get(telegramID)
+		require.True(t, exists)
+		assert.Equal(t, fsm.StateWaitingEmergencyFundChoice, sess.CurrentState)
+		assert.Equal(t, 0.0, sess.CurrentEmergencyFund)
+		assert.Contains(t, getLastSentText(sender), "vamos construir sua reserva juntos do zero")
+	})
+}

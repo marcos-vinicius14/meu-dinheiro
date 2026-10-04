@@ -18,21 +18,7 @@ func ParseMoney(input string) (float64, error) {
 	s = strings.ReplaceAll(s, "r$", "")
 	s = strings.TrimSpace(s)
 
-	hasComma := strings.Contains(s, ",")
-	hasDot := strings.Contains(s, ".")
-
-	if hasComma && hasDot {
-		if strings.LastIndex(s, ",") > strings.LastIndex(s, ".") {
-			s = strings.ReplaceAll(s, ".", "")
-			s = strings.ReplaceAll(s, ",", ".")
-		} else {
-			// Formato americano com vírgula de milhar: 1,250.50 -> remove vírgula
-			s = strings.ReplaceAll(s, ",", "")
-		}
-	} else if hasComma {
-		// Formato com vírgula decimal: 3500,50 -> 3500.50
-		s = strings.ReplaceAll(s, ",", ".")
-	}
+	s = normalizeNumericString(s)
 
 	val, err := strconv.ParseFloat(s, 64)
 	if err != nil || math.IsNaN(val) || math.IsInf(val, 0) || val <= 0 {
@@ -41,6 +27,48 @@ func ParseMoney(input string) (float64, error) {
 
 	val = math.Round(val*100) / 100
 	return val, nil
+}
+
+// normalizeNumericString normaliza números formatados em padrões pt-BR ou en-US para o formato padrão do Go ("1234.56").
+func normalizeNumericString(s string) string {
+	hasComma := strings.Contains(s, ",")
+	hasDot := strings.Contains(s, ".")
+
+	if hasComma && hasDot {
+		if strings.LastIndex(s, ",") > strings.LastIndex(s, ".") {
+			// Padrão brasileiro: 1.250,50 ou 1.000.000,50 -> remove pontos e troca vírgula por ponto
+			s = strings.ReplaceAll(s, ".", "")
+			s = strings.ReplaceAll(s, ",", ".")
+		} else {
+			// Padrão americano: 1,250.50 ou 1,000,000.50 -> remove vírgulas
+			s = strings.ReplaceAll(s, ",", "")
+		}
+	} else if hasComma {
+		// Apenas vírgula(s), sem ponto
+		if strings.Count(s, ",") > 1 {
+			// Múltiplas vírgulas de milhar sem decimais (ex: 1,500,000)
+			s = strings.ReplaceAll(s, ",", "")
+		} else {
+			// Única vírgula: decimal padrão pt-BR (ex: 100,50)
+			s = strings.ReplaceAll(s, ",", ".")
+		}
+	} else if hasDot {
+		// Apenas ponto(s), sem vírgula
+		if strings.Count(s, ".") > 1 {
+			// Múltiplos pontos são sempre separadores de milhar (ex: 1.500.000)
+			s = strings.ReplaceAll(s, ".", "")
+		} else {
+			parts := strings.Split(s, ".")
+			// Se a parte após o ponto tiver exatamente 3 dígitos (ex: 14.419 ou 1.000),
+			// no padrão pt-BR trata-se de separador de milhar.
+			// Decimais em moeda possuem 1 ou 2 dígitos (ex: 14.5, 14.50).
+			if len(parts) == 2 && len(parts[1]) == 3 {
+				s = strings.ReplaceAll(s, ".", "")
+			}
+		}
+	}
+
+	return s
 }
 
 func ParseCycleDay(input string) (int, error) {
@@ -140,19 +168,7 @@ func parseNumberToken(tok string) (float64, bool) {
 		return 0, false
 	}
 
-	hasComma := strings.Contains(s, ",")
-	hasDot := strings.Contains(s, ".")
-
-	if hasComma && hasDot {
-		if strings.LastIndex(s, ",") > strings.LastIndex(s, ".") {
-			s = strings.ReplaceAll(s, ".", "")
-			s = strings.ReplaceAll(s, ",", ".")
-		} else {
-			s = strings.ReplaceAll(s, ",", "")
-		}
-	} else if hasComma {
-		s = strings.ReplaceAll(s, ",", ".")
-	}
+	s = normalizeNumericString(s)
 
 	val, err := strconv.ParseFloat(s, 64)
 	if err != nil || math.IsNaN(val) || math.IsInf(val, 0) {
