@@ -22,7 +22,7 @@ func Load() *Config {
 
 	apiBaseURL := os.Getenv("API_BASE_URL")
 	if apiBaseURL == "" {
-		apiBaseURL = "http://api:8080"
+		apiBaseURL = "http://localhost:8080"
 	}
 
 	internalAPIKey := os.Getenv("INTERNAL_API_KEY")
