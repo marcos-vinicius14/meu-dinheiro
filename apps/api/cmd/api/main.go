@@ -27,6 +27,7 @@ func main() {
 	cfg := config.Load()
 
 	log.Printf("[INFO] Iniciando Meu Dinheiro API na porta :%s...", cfg.Port)
+	log.Printf("[INFO] Database target configurado: %s", database.MaskDatabaseURL(cfg.DatabaseURL))
 
 	// 1. Executa migrações de banco de dados
 	log.Printf("[INFO] Executando migrações com Goose...")
