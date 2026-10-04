@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -15,8 +16,60 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
+// SanitizeDatabaseURL normaliza a URL de banco, removendo espaços externos e codificando espaços ou caracteres especiais na senha se necessário.
+func SanitizeDatabaseURL(rawURL string) string {
+	rawURL = strings.TrimSpace(rawURL)
+	if rawURL == "" {
+		return rawURL
+	}
+
+	// Se já for parseável diretamente por url.Parse, retorna como está
+	if _, err := url.Parse(rawURL); err == nil {
+		return rawURL
+	}
+
+	// Se falhar (por exemplo devido a espaços na senha), tenta codificar a senha
+	schemeIdx := strings.Index(rawURL, "://")
+	if schemeIdx == -1 {
+		return rawURL
+	}
+
+	rest := rawURL[schemeIdx+3:]
+	slashIdx := strings.Index(rest, "/")
+	questionIdx := strings.Index(rest, "?")
+
+	endHostIdx := len(rest)
+	if slashIdx != -1 {
+		endHostIdx = slashIdx
+	} else if questionIdx != -1 {
+		endHostIdx = questionIdx
+	}
+
+	authority := rest[:endHostIdx]
+	pathAndQuery := rest[endHostIdx:]
+
+	atIdx := strings.LastIndex(authority, "@")
+	if atIdx == -1 {
+		return rawURL
+	}
+
+	userInfo := authority[:atIdx]
+	hostPort := authority[atIdx+1:]
+
+	parts := strings.SplitN(userInfo, ":", 2)
+	username := parts[0]
+	password := ""
+	if len(parts) == 2 {
+		password = parts[1]
+	}
+
+	encodedPassword := url.PathEscape(password)
+	return rawURL[:schemeIdx+3] + username + ":" + encodedPassword + "@" + hostPort + pathAndQuery
+}
+
 // MaskDatabaseURL oculta a senha da URL de conexão para exibição segura nos logs.
 func MaskDatabaseURL(rawURL string) string {
+	rawURL = SanitizeDatabaseURL(rawURL)
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
 		return "[URL inválida]"
@@ -31,6 +84,7 @@ func MaskDatabaseURL(rawURL string) string {
 
 // ConnectPool inicializa o pool de conexões do pgxpool.
 func ConnectPool(ctx context.Context, databaseURL string) (*pgxpool.Pool, error) {
+	databaseURL = SanitizeDatabaseURL(databaseURL)
 	cfg, err := pgxpool.ParseConfig(databaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("erro ao analisar databaseURL: %w", err)
@@ -56,6 +110,7 @@ func ConnectPool(ctx context.Context, databaseURL string) (*pgxpool.Pool, error)
 
 // RunMigrations executa as migrações SQL embutidas via Goose com tentativas de reconexão.
 func RunMigrations(databaseURL string) error {
+	databaseURL = SanitizeDatabaseURL(databaseURL)
 	var db *sql.DB
 	var err error
 
