@@ -3,6 +3,7 @@ package bankaccount
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -45,4 +46,17 @@ func UserAdvisoryLockID(userID uuid.UUID) int64 {
 	hi := binary.BigEndian.Uint64(userID[0:8])
 	lo := binary.BigEndian.Uint64(userID[8:16])
 	return int64(hi ^ lo)
+}
+
+// CurrentBalanceSQL gera a expressão SQL canônica para calcular o saldo líquido atual de uma conta,
+// somando o initial_balance com as transações confirmadas (INCOME positivo, EXPENSE negativo).
+func CurrentBalanceSQL(initialBalanceCol, accountIDCol string) string {
+	return fmt.Sprintf(`%s + COALESCE(
+		(SELECT SUM(CASE 
+			WHEN t.type = 'INCOME' AND t.status = 'CONFIRMED' THEN t.value 
+			WHEN t.type IN ('FIXED_EXPENSE', 'FLEXIBLE_EXPENSE', 'INSTALLMENT_EXPENSE') AND t.status = 'CONFIRMED' THEN -t.value 
+			ELSE 0 END) 
+		 FROM tb_transactions t 
+		 WHERE t.bank_account_id = %s), 0
+	)`, initialBalanceCol, accountIDCol)
 }
