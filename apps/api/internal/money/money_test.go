@@ -129,3 +129,18 @@ func TestJSONMarshaling(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "49.90", unmarshaled.String())
 }
+
+func TestDivide(t *testing.T) {
+	m := mustMoney("100.00")
+	divided, err := m.Divide(4)
+	require.NoError(t, err)
+	assert.Equal(t, "25.00", divided.String())
+
+	m2 := mustMoney("100.00")
+	divided2, err := m2.Divide(3)
+	require.NoError(t, err)
+	assert.Equal(t, "33.33", divided2.String())
+
+	_, err = m.Divide(0)
+	assert.Error(t, err)
+}

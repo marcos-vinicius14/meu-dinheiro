@@ -157,6 +157,15 @@ func (m Money) Allocate(parts int) ([]Money, error) {
 	return allocations, nil
 }
 
+// Divide divide o valor monetário por um divisor inteiro com precisão bancária (RoundBank escala 2).
+func (m Money) Divide(divisor int) (Money, error) {
+	if divisor == 0 {
+		return Zero(), errors.New("divisão por zero não é permitida")
+	}
+	res := m.val.Div(decimal.NewFromInt(int64(divisor))).RoundBank(scale)
+	return New(res), nil
+}
+
 // RatioOver calcula a razão m / base com 6 casas decimais e RoundBank.
 func (m Money) RatioOver(base Money) decimal.Decimal {
 	if base.IsZero() {

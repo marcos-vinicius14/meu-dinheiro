@@ -381,3 +381,17 @@ func ParseSimulationCommand(args string) (float64, int, error) {
 
 	return amount, installments, nil
 }
+
+// ParseSummaryCommand interpreta o período do comando /resumo.
+// Aceita "", "hoje", "dia" -> "today"
+// Aceita "semanal", "semana" -> "week"
+func ParseSummaryCommand(args string) (string, error) {
+	trimmed := strings.ToLower(strings.TrimSpace(args))
+	if trimmed == "" || trimmed == "hoje" || trimmed == "dia" {
+		return "today", nil
+	}
+	if trimmed == "semanal" || trimmed == "semana" {
+		return "week", nil
+	}
+	return "", errors.New("período inválido. Utilize '/resumo' (ou '/resumo hoje') para o dia atual ou '/semanal' (ou '/resumo semanal') para a semana.")
+}

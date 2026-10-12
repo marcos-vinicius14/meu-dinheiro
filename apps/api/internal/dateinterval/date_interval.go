@@ -60,6 +60,22 @@ func MonthOf(t time.Time) DateInterval {
 	return CycleOf(t, 1)
 }
 
+// WeekOf calcula o intervalo da semana (segunda a domingo) correspondente à data informada,
+// e retorna também o número de dias decorridos na semana até essa data (1 para segunda, ..., 7 para domingo).
+func WeekOf(t time.Time) (DateInterval, int) {
+	norm := NormalizeDate(t)
+	weekday := norm.Weekday() // Sunday = 0, Monday = 1, ..., Saturday = 6
+	daysSinceMonday := int(weekday - time.Monday)
+	if weekday == time.Sunday {
+		daysSinceMonday = 6
+	}
+	weekStart := norm.AddDate(0, 0, -daysSinceMonday)
+	weekEnd := weekStart.AddDate(0, 0, 6)
+	daysElapsed := daysSinceMonday + 1
+	interval, _ := New(weekStart, weekEnd)
+	return interval, daysElapsed
+}
+
 // StartDate retorna a data inicial.
 func (d DateInterval) StartDate() time.Time {
 	return d.startDate

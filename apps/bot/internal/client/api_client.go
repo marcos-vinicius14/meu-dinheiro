@@ -401,3 +401,35 @@ func (c *APIClient) RegisterIncome(ctx context.Context, req IncomeRequest) (*Inc
 
 	return &resp, nil
 }
+
+// GetSummaryReport busca a síntese consolidada financeira do usuário para o período especificado (today ou week).
+func (c *APIClient) GetSummaryReport(ctx context.Context, telegramID int64, period string) (*SummaryReportResponse, error) {
+	if period == "" {
+		period = "today"
+	}
+	url := fmt.Sprintf("%s/internal/reports/summary?telegram_id=%d&period=%s", c.baseURL, telegramID, period)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("criar requisicao http: %w", err)
+	}
+
+	httpReq.Header.Set("X-Internal-Secret", c.internalKey)
+
+	res, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("falha ao conectar com api: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(res.Body)
+		return nil, fmt.Errorf("erro da api (status %d): %s", res.StatusCode, string(body))
+	}
+
+	var resp SummaryReportResponse
+	if err := json.NewDecoder(res.Body).Decode(&resp); err != nil {
+		return nil, fmt.Errorf("decodificar resposta: %w", err)
+	}
+
+	return &resp, nil
+}

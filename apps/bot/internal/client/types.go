@@ -323,3 +323,50 @@ type IncomeResponse struct {
 	DaysRemaining      int     `json:"days_remaining"`
 	TotalLiquidBalance float64 `json:"total_liquid_balance"`
 }
+
+// --- RELATÓRIOS CONSOLIDADOS (RESUMO E SEMANAL) ---
+
+type DaySummaryItem struct {
+	ID           string  `json:"id"`
+	Description  string  `json:"description"`
+	Amount       float64 `json:"amount"`
+	CategoryName string  `json:"category_name"`
+	Type         string  `json:"type"`
+	Date         string  `json:"date"`
+}
+
+type DaySummaryResponse struct {
+	Date              string           `json:"date"`
+	TotalSpent        float64          `json:"total_spent"`
+	TransactionsCount int              `json:"transactions_count"`
+	Transactions      []DaySummaryItem `json:"transactions"`
+}
+
+type CategorySummaryItem struct {
+	CategoryID        string    `json:"category_id"`
+	CategoryName      string    `json:"category_name"`
+	Amount            float64   `json:"amount"`
+	Percentage        FlexFloat `json:"percentage"`
+	TransactionsCount int       `json:"transactions_count"`
+}
+
+type WeekSummaryResponse struct {
+	StartDate         string                `json:"start_date"`
+	EndDate           string                `json:"end_date"`
+	DaysElapsed       int                   `json:"days_elapsed"`
+	TotalSpent        float64               `json:"total_spent"`
+	DailyAverage      float64               `json:"daily_average"`
+	TransactionsCount int                   `json:"transactions_count"`
+	TopCategories     []CategorySummaryItem `json:"top_categories"`
+}
+
+type SummaryReportResponse struct {
+	Period             string               `json:"period"`
+	AccountBalance     float64              `json:"account_balance"`
+	TotalLiquidBalance float64              `json:"total_liquid_balance"`
+	S2SToday           float64              `json:"s2s_today"`
+	HealthStatus       string               `json:"health_status"`
+	DaysRemaining      int                  `json:"days_remaining"`
+	Today              *DaySummaryResponse  `json:"today,omitempty"`
+	Week               *WeekSummaryResponse `json:"week,omitempty"`
+}

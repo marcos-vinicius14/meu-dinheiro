@@ -526,3 +526,53 @@ func TestAPIClient_SellInvestment_InsufficientQuantityError(t *testing.T) {
 	assert.Contains(t, err.Error(), "status 400")
 	assert.Contains(t, err.Error(), "quantidade insuficiente para venda")
 }
+
+func TestAPIClient_GetSummaryReport_Success(t *testing.T) {
+	expectedSecret := "bot-secret"
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/internal/reports/summary", r.URL.Path)
+		assert.Equal(t, "12345", r.URL.Query().Get("telegram_id"))
+		assert.Equal(t, "today", r.URL.Query().Get("period"))
+		assert.Equal(t, expectedSecret, r.Header.Get("X-Internal-Secret"))
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{
+			"period": "today",
+			"account_balance": 4500.00,
+			"total_liquid_balance": 4500.00,
+			"s2s_today": 78.50,
+			"health_status": "HEALTHY",
+			"days_remaining": 22,
+			"today": {
+				"date": "2026-10-12",
+				"total_spent": 50.00,
+				"transactions_count": 1,
+				"transactions": [
+					{
+						"id": "tx-1",
+						"description": "Almoço",
+						"amount": 50.00,
+						"category_name": "Alimentação",
+						"type": "FLEXIBLE_EXPENSE",
+						"date": "2026-10-12"
+					}
+				]
+			}
+		}`))
+	}))
+	defer server.Close()
+
+	apiClient := client.NewAPIClient(server.URL, expectedSecret)
+	resp, err := apiClient.GetSummaryReport(context.Background(), 12345, "today")
+
+	require.NoError(t, err)
+	assert.Equal(t, "today", resp.Period)
+	assert.Equal(t, 4500.00, resp.AccountBalance)
+	assert.Equal(t, 78.50, resp.S2SToday)
+	assert.Equal(t, "HEALTHY", resp.HealthStatus)
+	require.NotNil(t, resp.Today)
+	assert.Equal(t, 50.00, resp.Today.TotalSpent)
+	assert.Len(t, resp.Today.Transactions, 1)
+	assert.Equal(t, "Almoço", resp.Today.Transactions[0].Description)
+}
