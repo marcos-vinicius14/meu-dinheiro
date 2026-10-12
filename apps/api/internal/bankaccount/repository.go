@@ -72,10 +72,18 @@ func (r *Repository) Create(ctx context.Context, userID uuid.UUID, name string, 
 
 func (r *Repository) ListByUserID(ctx context.Context, userID uuid.UUID) ([]BankAccount, error) {
 	query := `
-		SELECT id, user_id, name, type, initial_balance
-		FROM tb_bank_accounts
-		WHERE user_id = $1
-		ORDER BY name ASC
+		SELECT a.id, a.user_id, a.name, a.type, a.initial_balance,
+		       a.initial_balance + COALESCE(
+		           (SELECT SUM(CASE 
+		               WHEN t.type = 'INCOME' AND t.status = 'CONFIRMED' THEN t.value 
+		               WHEN t.type IN ('FIXED_EXPENSE', 'FLEXIBLE_EXPENSE', 'INSTALLMENT_EXPENSE') AND t.status = 'CONFIRMED' THEN -t.value 
+		               ELSE 0 END) 
+		            FROM tb_transactions t 
+		            WHERE t.bank_account_id = a.id), 0
+		       ) AS current_balance
+		FROM tb_bank_accounts a
+		WHERE a.user_id = $1
+		ORDER BY a.name ASC
 	`
 	rows, err := r.pool.Query(ctx, query, userID)
 	if err != nil {
@@ -86,10 +94,9 @@ func (r *Repository) ListByUserID(ctx context.Context, userID uuid.UUID) ([]Bank
 	var accounts []BankAccount
 	for rows.Next() {
 		var a BankAccount
-		if err := rows.Scan(&a.ID, &a.UserID, &a.Name, &a.Type, &a.InitialBalance); err != nil {
+		if err := rows.Scan(&a.ID, &a.UserID, &a.Name, &a.Type, &a.InitialBalance, &a.CurrentBalance); err != nil {
 			return nil, fmt.Errorf("ler conta: %w", err)
 		}
-		a.CurrentBalance = a.InitialBalance
 		accounts = append(accounts, a)
 	}
 	if accounts == nil {
@@ -100,19 +107,26 @@ func (r *Repository) ListByUserID(ctx context.Context, userID uuid.UUID) ([]Bank
 
 func (r *Repository) FindByIDAndUserID(ctx context.Context, id, userID uuid.UUID) (*BankAccount, error) {
 	query := `
-		SELECT id, user_id, name, type, initial_balance
-		FROM tb_bank_accounts
-		WHERE id = $1 AND user_id = $2
+		SELECT a.id, a.user_id, a.name, a.type, a.initial_balance,
+		       a.initial_balance + COALESCE(
+		           (SELECT SUM(CASE 
+		               WHEN t.type = 'INCOME' AND t.status = 'CONFIRMED' THEN t.value 
+		               WHEN t.type IN ('FIXED_EXPENSE', 'FLEXIBLE_EXPENSE', 'INSTALLMENT_EXPENSE') AND t.status = 'CONFIRMED' THEN -t.value 
+		               ELSE 0 END) 
+		            FROM tb_transactions t 
+		            WHERE t.bank_account_id = a.id), 0
+		       ) AS current_balance
+		FROM tb_bank_accounts a
+		WHERE a.id = $1 AND a.user_id = $2
 	`
 	var a BankAccount
-	err := r.pool.QueryRow(ctx, query, id, userID).Scan(&a.ID, &a.UserID, &a.Name, &a.Type, &a.InitialBalance)
+	err := r.pool.QueryRow(ctx, query, id, userID).Scan(&a.ID, &a.UserID, &a.Name, &a.Type, &a.InitialBalance, &a.CurrentBalance)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrAccountNotFound
 		}
 		return nil, fmt.Errorf("buscar conta: %w", err)
 	}
-	a.CurrentBalance = a.InitialBalance
 	return &a, nil
 }
 

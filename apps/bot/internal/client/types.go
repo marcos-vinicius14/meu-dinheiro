@@ -152,16 +152,26 @@ type InvestmentItem struct {
 }
 
 type AddInvestmentRequest struct {
-	TelegramID int64   `json:"telegram_id"`
-	Ticker     string  `json:"ticker"`
-	Quantity   float64 `json:"quantity"`
-	Price      float64 `json:"price"`
+	TelegramID   int64   `json:"telegram_id"`
+	Ticker       string  `json:"ticker"`
+	Quantity     float64 `json:"quantity"`
+	Price        float64 `json:"price"`
+	AccountID    *string `json:"account_id,omitempty"`
+	DebitAccount *bool   `json:"debit_account,omitempty"`
 }
 
 type AddInvestmentResponse struct {
-	Investment    InvestmentItem `json:"investment"`
-	TotalInvested float64        `json:"total_invested"`
-	TotalNetWorth float64        `json:"total_net_worth"`
+	Investment         InvestmentItem `json:"investment"`
+	DebitedAmount      float64        `json:"debited_amount"`
+	AccountID          string         `json:"account_id,omitempty"`
+	AccountName        string         `json:"account_name,omitempty"`
+	AccountBalance     float64        `json:"account_balance"`
+	TotalLiquidBalance float64        `json:"total_liquid_balance"`
+	TotalInvested      float64        `json:"total_invested"`
+	TotalNetWorth      float64        `json:"total_net_worth"`
+	PreviousS2S        float64        `json:"previous_s2s"`
+	NewS2S             float64        `json:"new_s2s"`
+	DaysRemaining      int            `json:"days_remaining"`
 }
 
 type ListInvestmentsResponse struct {

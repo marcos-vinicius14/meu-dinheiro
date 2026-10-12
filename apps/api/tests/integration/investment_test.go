@@ -2,6 +2,7 @@ package integration_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/internal/money"
 	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/tests/integration"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,8 +20,13 @@ func TestInvestmentCRUDAndWeightedAveragePrice(t *testing.T) {
 	app := integration.SetupTestApp(t)
 	defer app.CleanDatabase(t)
 
-	_, token := app.CreateTestUser(t, 99887766, "Investidor Teste")
+	u, token := app.CreateTestUser(t, 99887766, "Investidor Teste")
 	authHeader := "Bearer " + token
+
+	// Provisiona saldo inicial na conta corrente para viabilizar aportes
+	accountID := app.FindFirstBankAccount(t, u.ID)
+	_, err := app.BankAccountRepo.Update(context.Background(), accountID, u.ID, "Conta Corrente", money.NewFromFloat(5000.00))
+	require.NoError(t, err)
 
 	// 1. Cadastra o primeiro lote de ALUP11 (10 ações a R$ 40,00)
 	body1, _ := json.Marshal(map[string]any{
@@ -39,7 +46,7 @@ func TestInvestmentCRUDAndWeightedAveragePrice(t *testing.T) {
 		AveragePrice float64   `json:"average_price"`
 		TotalCost    float64   `json:"total_cost"`
 	}
-	err := json.NewDecoder(res1.Body).Decode(&inv1)
+	err = json.NewDecoder(res1.Body).Decode(&inv1)
 	require.NoError(t, err)
 	assert.Equal(t, "ALUP11", inv1.Ticker)
 	assert.Equal(t, "10", inv1.Quantity)
@@ -115,4 +122,36 @@ func TestInvestmentCRUDAndWeightedAveragePrice(t *testing.T) {
 	_ = json.NewDecoder(listRes2.Body).Decode(&portfolio2)
 	assert.Len(t, portfolio2.Investments, 1)
 	assert.Equal(t, 1375.00, portfolio2.TotalInvested)
+
+	// 7. Confirma que a conta bancária foi devidamente debitada:
+	// Saldo inicial 5.000 - 400 (ALUP11) - 500 (ALUP11) - 1375 (BBAS3) = 2.725,00
+	account, err := app.BankAccountRepo.FindByIDAndUserID(context.Background(), accountID, u.ID)
+	require.NoError(t, err)
+	assert.Equal(t, "2725.00", account.CurrentBalance.String())
+
+	// 8. Tentativa de aporte com saldo insuficiente (R$ 5.000 > R$ 2.725) -> HTTP 400
+	bodyExcess, _ := json.Marshal(map[string]any{
+		"ticker":   "VALE3",
+		"quantity": 100,
+		"price":    50.00, // R$ 5.000,00
+	})
+	reqExcess := httptest.NewRequest(http.MethodPost, "/investments", bytes.NewReader(bodyExcess))
+	reqExcess.Header.Set("Authorization", authHeader)
+	resExcess := app.ExecuteRequest(reqExcess)
+	assert.Equal(t, http.StatusBadRequest, resExcess.Code)
+	assert.Contains(t, resExcess.Body.String(), "saldo insuficiente na conta para realizar o aporte")
+
+	// 9. Tentativa de aporte com conta bancária inexistente -> HTTP 404
+	randomAccID := uuid.New()
+	bodyInvalidAcc, _ := json.Marshal(map[string]any{
+		"ticker":     "VALE3",
+		"quantity":   10,
+		"price":      50.00,
+		"account_id": randomAccID,
+	})
+	reqInvalidAcc := httptest.NewRequest(http.MethodPost, "/investments", bytes.NewReader(bodyInvalidAcc))
+	reqInvalidAcc.Header.Set("Authorization", authHeader)
+	resInvalidAcc := app.ExecuteRequest(reqInvalidAcc)
+	assert.Equal(t, http.StatusNotFound, resInvalidAcc.Code)
+	assert.Contains(t, resInvalidAcc.Body.String(), "conta bancária não encontrada")
 }
