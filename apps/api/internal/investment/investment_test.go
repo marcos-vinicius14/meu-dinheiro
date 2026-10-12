@@ -114,3 +114,17 @@ func TestCalculateSale(t *testing.T) {
 	_, _, err = investment.CalculateSale(d("10"), d("0"))
 	assert.ErrorIs(t, err, investment.ErrInvalidQuantity)
 }
+
+func TestCalculateTotalCost(t *testing.T) {
+	// 10 ações a R$ 35,00 = R$ 350,00
+	cost := investment.CalculateTotalCost(d("10"), m("35.00"))
+	assert.Equal(t, "350.00", cost.String())
+
+	// 100 ações a R$ 42,23 = R$ 4223,00
+	cost = investment.CalculateTotalCost(d("100"), m("42.23"))
+	assert.Equal(t, "4223.00", cost.String())
+
+	// Quantidade fracionária: 1.5 a R$ 10,00 = R$ 15,00
+	cost = investment.CalculateTotalCost(d("1.5"), m("10.00"))
+	assert.Equal(t, "15.00", cost.String())
+}

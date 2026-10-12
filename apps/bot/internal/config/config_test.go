@@ -1,7 +1,6 @@
 package config_test
 
 import (
-	"os"
 	"testing"
 
 	"github.com/marcos-vinicius14/meu-dinheiro/apps/bot/internal/config"
@@ -9,19 +8,13 @@ import (
 )
 
 func TestConfigLoadDefaults(t *testing.T) {
-	// Limpa variáveis de teste para garantir isolamento
-	origPort := os.Getenv("PORT")
-	os.Unsetenv("PORT")
-	defer func() {
-		if origPort != "" {
-			_ = os.Setenv("PORT", origPort)
-		}
-	}()
-
-	os.Unsetenv("WEBHOOK_URL")
-	os.Unsetenv("WEBHOOK_SECRET_TOKEN")
-	os.Unsetenv("WEBHOOK_PORT")
-	os.Unsetenv("WEBHOOK_PATH")
+	// Isola variáveis de teste para garantir que valores de .env.local não sobrescrevam defaults
+	t.Setenv("PORT", "")
+	t.Setenv("API_BASE_URL", "")
+	t.Setenv("WEBHOOK_URL", "")
+	t.Setenv("WEBHOOK_SECRET_TOKEN", "")
+	t.Setenv("WEBHOOK_PORT", "")
+	t.Setenv("WEBHOOK_PATH", "")
 
 	cfg := config.Load()
 	assert.NotNil(t, cfg)

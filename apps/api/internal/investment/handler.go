@@ -2,11 +2,13 @@ package investment
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/internal/auth"
+	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/internal/bankaccount"
 	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/internal/money"
 	"github.com/marcos-vinicius14/meu-dinheiro/apps/api/internal/web"
 	"github.com/shopspring/decimal"
@@ -46,9 +48,10 @@ func (h *Handler) handleList(w http.ResponseWriter, r *http.Request) {
 }
 
 type addLotRequest struct {
-	Ticker   string          `json:"ticker"`
-	Quantity decimal.Decimal `json:"quantity"`
-	Price    money.Money     `json:"price"`
+	Ticker    string          `json:"ticker"`
+	Quantity  decimal.Decimal `json:"quantity"`
+	Price     money.Money     `json:"price"`
+	AccountID *uuid.UUID      `json:"account_id,omitempty"`
 }
 
 func (h *Handler) handleAddLot(w http.ResponseWriter, r *http.Request) {
@@ -64,18 +67,24 @@ func (h *Handler) handleAddLot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	inv, err := h.service.AddLot(r.Context(), u.ID, req.Ticker, req.Quantity, req.Price)
+	result, err := h.service.AddLotWithDebit(r.Context(), u.ID, req.AccountID, req.Ticker, req.Quantity, req.Price)
 	if err != nil {
-		switch err {
-		case ErrInvalidTicker, ErrInvalidQuantity, ErrInvalidPrice:
+		switch {
+		case errors.Is(err, ErrInvalidTicker),
+			errors.Is(err, ErrInvalidQuantity),
+			errors.Is(err, ErrInvalidPrice),
+			errors.Is(err, ErrInsufficientBalance):
 			web.Error(w, http.StatusBadRequest, err.Error())
+		case errors.Is(err, ErrNoAccountAvailable),
+			errors.Is(err, bankaccount.ErrAccountNotFound):
+			web.Error(w, http.StatusNotFound, err.Error())
 		default:
 			web.Error(w, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 
-	web.JSON(w, http.StatusCreated, inv)
+	web.JSON(w, http.StatusCreated, result.Investment)
 }
 
 func (h *Handler) handleDelete(w http.ResponseWriter, r *http.Request) {

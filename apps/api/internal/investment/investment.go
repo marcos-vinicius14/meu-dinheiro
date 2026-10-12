@@ -17,6 +17,8 @@ var (
 	ErrInvalidQuantity      = errors.New("quantidade deve ser maior que zero")
 	ErrInvalidPrice         = errors.New("preço deve ser maior ou igual a zero")
 	ErrInsufficientQuantity = errors.New("quantidade insuficiente para venda")
+	ErrInsufficientBalance  = errors.New("saldo insuficiente na conta para realizar o aporte")
+	ErrNoAccountAvailable   = errors.New("nenhuma conta bancária disponível para debitar o aporte")
 )
 
 var tickerRegex = regexp.MustCompile(`^[A-Z0-9.\-_]{1,12}$`)

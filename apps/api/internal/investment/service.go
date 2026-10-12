@@ -31,6 +31,17 @@ func (s *Service) AddLot(
 	return s.repo.AddLot(ctx, userID, ticker, quantity, price)
 }
 
+func (s *Service) AddLotWithDebit(
+	ctx context.Context,
+	userID uuid.UUID,
+	accountID *uuid.UUID,
+	ticker string,
+	quantity decimal.Decimal,
+	price money.Money,
+) (*AddLotResult, error) {
+	return s.repo.AddLotWithDebit(ctx, userID, accountID, ticker, quantity, price)
+}
+
 func (s *Service) Sell(
 	ctx context.Context,
 	userID uuid.UUID,

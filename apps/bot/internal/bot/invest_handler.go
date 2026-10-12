@@ -132,6 +132,10 @@ func (b *Bot) handleInvestCommand(ctx context.Context, chatID int64, user *tgbot
 		Price:      invData.AveragePrice,
 	})
 	if err != nil {
+		if strings.Contains(err.Error(), "saldo insuficiente") {
+			b.reply(chatID, "⚠️ Saldo insuficiente na sua conta bancária para realizar este aporte.")
+			return
+		}
 		if strings.Contains(err.Error(), "status 404") || strings.Contains(err.Error(), "não encontrado") {
 			b.reply(chatID, "⚠️ Você ainda não possui cadastro no *Meu Dinheiro*. Envie /start para configurar seu perfil.")
 			return
@@ -142,21 +146,35 @@ func (b *Bot) handleInvestCommand(ctx context.Context, chatID int64, user *tgbot
 	}
 
 	qtyStr := formatQty(float64(resp.Investment.Quantity))
-	msgText := fmt.Sprintf(
-		"✅ *Aporte registrado com sucesso!*\n\n"+
-			"🏷️ *Ativo:* `%s`\n"+
-			"📦 *Custódia Total:* %s cotas\n"+
-			"🎯 *Preço Médio Ponderado:* R$ %s\n"+
-			"💰 *Posição no Ativo:* R$ %s\n\n"+
-			"💼 *Total na Carteira:* R$ %s\n"+
-			"🌐 *Patrimônio Líquido Total:* R$ %s",
-		resp.Investment.Ticker,
-		qtyStr,
-		formatMoneyBR(resp.Investment.AveragePrice),
-		formatMoneyBR(resp.Investment.TotalCost),
-		formatMoneyBR(resp.TotalInvested),
-		formatMoneyBR(resp.TotalNetWorth),
-	)
+	var sb strings.Builder
+	sb.WriteString("✅ *Aporte registrado com sucesso!*\n\n")
+	sb.WriteString(fmt.Sprintf("🏷️ *Ativo:* `%s`\n", resp.Investment.Ticker))
+	sb.WriteString(fmt.Sprintf("📦 *Custódia Total:* %s cotas\n", qtyStr))
+	sb.WriteString(fmt.Sprintf("🎯 *Preço Médio Ponderado:* R$ %s\n", formatMoneyBR(resp.Investment.AveragePrice)))
+	sb.WriteString(fmt.Sprintf("💰 *Posição no Ativo:* R$ %s\n\n", formatMoneyBR(resp.Investment.TotalCost)))
+
+	if resp.DebitedAmount > 0 {
+		accountLabel := ""
+		if resp.AccountName != "" {
+			accountLabel = fmt.Sprintf(" (%s)", EscapeMarkdown(resp.AccountName))
+		}
+		sb.WriteString(fmt.Sprintf("📉 *Débito em Conta%s:* -R$ %s (Saldo restante: R$ %s)\n",
+			accountLabel,
+			formatMoneyBR(resp.DebitedAmount),
+			formatMoneyBR(resp.AccountBalance),
+		))
+	}
+
+	if resp.NewS2S > 0 || resp.PreviousS2S > 0 {
+		sb.WriteString(fmt.Sprintf("🎯 *Novo S2S Diário:* R$ %s/dia (%d dias restantes)\n",
+			formatMoneyBR(resp.NewS2S),
+			resp.DaysRemaining,
+		))
+	}
+
+	sb.WriteString("\n")
+	sb.WriteString(fmt.Sprintf("💼 *Total na Carteira:* R$ %s\n", formatMoneyBR(resp.TotalInvested)))
+	sb.WriteString(fmt.Sprintf("🌐 *Patrimônio Líquido Total:* R$ %s", formatMoneyBR(resp.TotalNetWorth)))
 
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
@@ -164,7 +182,7 @@ func (b *Bot) handleInvestCommand(ctx context.Context, chatID int64, user *tgbot
 		),
 	)
 
-	b.replyWithMarkup(chatID, msgText, keyboard)
+	b.replyWithMarkup(chatID, sb.String(), keyboard)
 }
 
 func (b *Bot) handleInvestHelp(chatID int64) {
@@ -439,11 +457,13 @@ func (b *Bot) handleInvestCallback(ctx context.Context, cb *tgbotapi.CallbackQue
 			return
 		}
 
+		noDebit := false
 		_, err = b.client.AddInvestment(ctx, client.AddInvestmentRequest{
-			TelegramID: userID,
-			Ticker:     ticker,
-			Quantity:   qty,
-			Price:      pm,
+			TelegramID:   userID,
+			Ticker:       ticker,
+			Quantity:     qty,
+			Price:        pm,
+			DebitAccount: &noDebit,
 		})
 		if err != nil {
 			b.logger.Error("erro ao desfazer venda", "error", err)
@@ -497,4 +517,16 @@ func formatQty(q float64) string {
 		return fmt.Sprintf("%.0f", q)
 	}
 	return fmt.Sprintf("%.4g", q)
+}
+
+// EscapeMarkdown escapa caracteres reservados de formatação do Telegram Markdown v1 (_, *, `, [, ]).
+func EscapeMarkdown(s string) string {
+	replacer := strings.NewReplacer(
+		"_", "\\_",
+		"*", "\\*",
+		"`", "\\`",
+		"[", "\\[",
+		"]", "\\]",
+	)
+	return replacer.Replace(s)
 }

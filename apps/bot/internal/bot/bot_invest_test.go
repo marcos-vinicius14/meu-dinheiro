@@ -101,10 +101,33 @@ func newInvestAPIMockServer() *investAPIMockServer {
 				}
 			}
 
+			debited := 0.0
+			debitAccount := true
+			if req.DebitAccount != nil {
+				debitAccount = *req.DebitAccount
+			}
+			if debitAccount {
+				debited = req.Quantity * req.Price
+				if debited > mock.totalLiquid {
+					w.WriteHeader(http.StatusBadRequest)
+					_ = json.NewEncoder(w).Encode(map[string]string{"error": "saldo insuficiente na conta para realizar o aporte"})
+					return
+				}
+				mock.totalLiquid -= debited
+			}
+
 			resp := client.AddInvestmentResponse{
-				Investment:    matchedInv,
-				TotalInvested: totalInvested,
-				TotalNetWorth: totalInvested + mock.totalLiquid,
+				Investment:         matchedInv,
+				DebitedAmount:      debited,
+				AccountID:          "acc-1",
+				AccountName:        "Conta Corrente",
+				AccountBalance:     mock.totalLiquid,
+				TotalLiquidBalance: mock.totalLiquid,
+				TotalInvested:      totalInvested,
+				TotalNetWorth:      totalInvested + mock.totalLiquid,
+				PreviousS2S:        50.00,
+				NewS2S:             32.50,
+				DaysRemaining:      20,
 			}
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
@@ -286,7 +309,22 @@ func TestInvestCommand(t *testing.T) {
 	assert.Contains(t, lastMsg.Text, "`ALUP11`")
 	assert.Contains(t, lastMsg.Text, "100 cotas")
 	assert.Contains(t, lastMsg.Text, "42,23")
+	assert.Contains(t, lastMsg.Text, "Débito em Conta (Conta Corrente):* -R$ 4223,00")
+	assert.Contains(t, lastMsg.Text, "Saldo restante: R$ 777,00")
+	assert.Contains(t, lastMsg.Text, "Novo S2S Diário:* R$ 32,50/dia")
 	assert.Contains(t, lastMsg.Text, "Total na Carteira")
+
+	// 5. Tentativa de aporte com saldo insuficiente
+	updateInsufficient := &tgbotapi.Update{
+		UpdateID: 5,
+		Message: &tgbotapi.Message{
+			Text: "/investimento PETR4 100 a 50.00", // R$ 5.000,00 > R$ 777,00 restante
+			From: &tgbotapi.User{ID: 12345, FirstName: "Investidor"},
+			Chat: &tgbotapi.Chat{ID: 100},
+		},
+	}
+	b.ProcessUpdate(ctx, updateInsufficient)
+	assert.Contains(t, sender.LastText(), "Saldo insuficiente na sua conta bancária para realizar este aporte")
 }
 
 func TestPortfolioCommand_Empty(t *testing.T) {
@@ -729,4 +767,12 @@ func indexOf(s, substr string) int {
 		}
 	}
 	return -1
+}
+
+func TestEscapeMarkdown(t *testing.T) {
+	assert.Equal(t, "Nubank\\_PF", bot.EscapeMarkdown("Nubank_PF"))
+	assert.Equal(t, "XP\\*Invest", bot.EscapeMarkdown("XP*Invest"))
+	assert.Equal(t, "Conta \\[1\\]", bot.EscapeMarkdown("Conta [1]"))
+	assert.Equal(t, "Code \\`inline\\`", bot.EscapeMarkdown("Code `inline`"))
+	assert.Equal(t, "Conta Corrente", bot.EscapeMarkdown("Conta Corrente"))
 }
