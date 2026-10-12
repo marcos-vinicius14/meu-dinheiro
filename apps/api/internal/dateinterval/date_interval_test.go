@@ -113,3 +113,26 @@ func TestCycleOfClampsInvalidDays(t *testing.T) {
 	interval31 := dateinterval.CycleOf(date(2026, 9, 15), 31)
 	assert.Equal(t, date(2026, 9, 1), interval31.StartDate())
 }
+
+func TestWeekOf(t *testing.T) {
+	// 12/10/2026 é Segunda-feira
+	monday := date(2026, 10, 12)
+	interval, elapsed := dateinterval.WeekOf(monday)
+	assert.Equal(t, date(2026, 10, 12), interval.StartDate())
+	assert.Equal(t, date(2026, 10, 18), interval.EndDate())
+	assert.Equal(t, 1, elapsed)
+
+	// 14/10/2026 é Quarta-feira
+	wednesday := date(2026, 10, 14)
+	intervalWed, elapsedWed := dateinterval.WeekOf(wednesday)
+	assert.Equal(t, date(2026, 10, 12), intervalWed.StartDate())
+	assert.Equal(t, date(2026, 10, 18), intervalWed.EndDate())
+	assert.Equal(t, 3, elapsedWed)
+
+	// 18/10/2026 é Domingo
+	sunday := date(2026, 10, 18)
+	intervalSun, elapsedSun := dateinterval.WeekOf(sunday)
+	assert.Equal(t, date(2026, 10, 12), intervalSun.StartDate())
+	assert.Equal(t, date(2026, 10, 18), intervalSun.EndDate())
+	assert.Equal(t, 7, elapsedSun)
+}

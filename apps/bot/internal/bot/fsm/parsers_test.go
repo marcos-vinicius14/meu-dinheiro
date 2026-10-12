@@ -360,3 +360,35 @@ func TestParseSaleCommand_ValidationErrors(t *testing.T) {
 func floatPtr(f float64) *float64 {
 	return &f
 }
+
+func TestParseSummaryCommand(t *testing.T) {
+	tests := []struct {
+		name       string
+		input      string
+		wantPeriod string
+		wantErr    bool
+	}{
+		{"vazio vira today", "", "today", false},
+		{"espaços viram today", "   ", "today", false},
+		{"hoje vira today", "hoje", "today", false},
+		{"HOJE maiúsculo vira today", "HOJE", "today", false},
+		{"dia vira today", "dia", "today", false},
+		{"semanal vira week", "semanal", "week", false},
+		{"SEMANAL maiúsculo vira week", "SEMANAL", "week", false},
+		{"semana vira week", "semana", "week", false},
+		{"argumento inválido", "mes", "", true},
+		{"número inválido", "123", "", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			period, err := ParseSummaryCommand(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("ParseSummaryCommand(%q) err = %v, wantErr = %v", tt.input, err, tt.wantErr)
+			}
+			if !tt.wantErr && period != tt.wantPeriod {
+				t.Errorf("ParseSummaryCommand(%q) = %q, want %q", tt.input, period, tt.wantPeriod)
+			}
+		})
+	}
+}

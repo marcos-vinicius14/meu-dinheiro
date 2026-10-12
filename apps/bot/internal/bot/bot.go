@@ -160,6 +160,8 @@ func (b *Bot) handleMessage(ctx context.Context, msg *tgbotapi.Message) {
 				"Se você estava tentando entrar pelo navegador, utilize o botão de acesso na página para ser redirecionado para cá com seu token de autorização.\n\n"+
 				"Comandos disponíveis:\n"+
 				"• /s2s - Consultar saldo seguro diário\n"+
+				"• /resumo - Resumo consolidado de gastos e saldo de hoje\n"+
+				"• /semanal - Resumo consolidado da semana e top categorias\n"+
 				"• /gasto <valor> <descrição> - Lançar gasto rápido\n"+
 				"• /renda <valor> <descrição> - Registrar entrada de dinheiro\n"+
 				"• /carteira - Visualizar carteira e patrimônio investido\n"+
@@ -178,6 +180,17 @@ func (b *Bot) handleMessage(ctx context.Context, msg *tgbotapi.Message) {
 	// Comandos de Consulta de S2S (D-01, D-15)
 	if text == "/s2s" || text == ButtonS2SToday {
 		b.handleS2S(ctx, chatID, user.ID)
+		return
+	}
+
+	// Comandos de Resumo Financeiro Diário e Semanal
+	if text == "/resumo" || text == "/resumo hoje" || strings.HasPrefix(text, "/resumo ") {
+		b.handleSummaryCommand(ctx, chatID, user.ID, text)
+		return
+	}
+
+	if text == "/semanal" || strings.HasPrefix(text, "/semanal ") {
+		b.handleWeeklyCommand(ctx, chatID, user.ID)
 		return
 	}
 
@@ -227,14 +240,15 @@ func (b *Bot) handleMessage(ctx context.Context, msg *tgbotapi.Message) {
 	case "/ajuda":
 		helpMsg := "📖 *Ajuda - Meu Dinheiro*\n\n" +
 			"1. *Saldo Seguro (S2S)*: Utilize `/s2s` ou o botão no teclado para ver quanto pode gastar hoje.\n" +
-			"2. *Lançamento de Gastos*: Envie `/gasto <valor> <descrição>` para debitar despesas e ver a recalibração imediata do seu S2S.\n" +
-			"3. *Entrada de Dinheiro*: Envie `/renda <valor> <descrição>` para registrar salários, freelas ou recebimentos e aumentar seu S2S na hora.\n" +
-			"4. *Carteira de Investimentos*: Envie `/carteira` (ou `/investimentos`) para acompanhar seus ativos, PM e patrimônio consolidado.\n" +
-			"5. *Aporte de Ativos*: Envie `/investimento <TICKER> <QTD> [a] <PREÇO>` (ou `/aporte`, `/comprar`) para atualizar o Preço Médio Ponderado.\n" +
-			"6. *Venda de Ativos*: Envie `/venda <TICKER> <QTD> [a PREÇO]` para baixar custódia e apurar Lucro/Prejuízo com opção de creditar no saldo em conta.\n" +
-			"7. *Simulador What-If*: Envie `/simular <valor> [parcelas]` para simular o impacto de compras em até 12 ciclos futuros.\n" +
-			"8. *Check-in Diário*: Envie `/checkin` ou clique no botão para conferir saldo bancário e fechar o dia com chave de ouro.\n" +
-			"9. *Login no Navegador*: Acesse a plataforma web e clique em 'Entrar com Telegram'.\n\n" +
+			"2. *Resumo Diário e Semanal*: Envie `/resumo` (ou `/resumo hoje`) para ver os gastos e extrato rápido de hoje, ou `/semanal` (ou `/resumo semanal`) para a visão consolidada da semana e top categorias.\n" +
+			"3. *Lançamento de Gastos*: Envie `/gasto <valor> <descrição>` para debitar despesas e ver a recalibração imediata do seu S2S.\n" +
+			"4. *Entrada de Dinheiro*: Envie `/renda <valor> <descrição>` para registrar salários, freelas ou recebimentos e aumentar seu S2S na hora.\n" +
+			"5. *Carteira de Investimentos*: Envie `/carteira` (ou `/investimentos`) para acompanhar seus ativos, PM e patrimônio consolidado.\n" +
+			"6. *Aporte de Ativos*: Envie `/investimento <TICKER> <QTD> [a] <PREÇO>` (ou `/aporte`, `/comprar`) para atualizar o Preço Médio Ponderado.\n" +
+			"7. *Venda de Ativos*: Envie `/venda <TICKER> <QTD> [a PREÇO]` para baixar custódia e apurar Lucro/Prejuízo com opção de creditar no saldo em conta.\n" +
+			"8. *Simulador What-If*: Envie `/simular <valor> [parcelas]` para simular o impacto de compras em até 12 ciclos futuros.\n" +
+			"9. *Check-in Diário*: Envie `/checkin` ou clique no botão para conferir saldo bancário e fechar o dia com chave de ouro.\n" +
+			"10. *Login no Navegador*: Acesse a plataforma web e clique em 'Entrar com Telegram'.\n\n" +
 			"💡 *Como funciona o Cálculo do S2S (Saldo Seguro Diário)?*\n" +
 			"O S2S é o valor que você pode gastar livremente hoje sem comprometer suas contas fixas nem a sua meta de poupança/reserva. O motor calcula sua *Liquidez Disponível* (saldo em conta + receitas previstas até o fim do ciclo − contas fixas − parcelas já assumidas − meta de reserva) e divide essa capacidade flexível restante pelos *dias que ainda restam no ciclo*. Ao registrar qualquer gasto ou receita, o valor diário é recalibrado imediatamente.\n\n" +
 			"🔮 *Como funciona o Cálculo da Simulação What-If?*\n" +

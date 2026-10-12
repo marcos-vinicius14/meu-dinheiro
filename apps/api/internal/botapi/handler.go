@@ -60,6 +60,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 		internal.Post("/internal/transactions/checkin", h.handleDailyCheckIn)
 		internal.Post("/internal/transactions/income", h.handleIncome)
 		internal.Post("/internal/bank-accounts/balance", h.handleAdjustBalance)
+		internal.Get("/internal/reports/summary", h.handleSummaryReport)
 	})
 }
 
